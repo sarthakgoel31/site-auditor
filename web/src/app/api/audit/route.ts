@@ -117,10 +117,16 @@ export async function POST(req: NextRequest) {
   };
   audits.set(id, record);
 
-  // Run pipeline synchronously — Vercel kills background tasks
-  await runAuditPipeline(record);
+  // Save initial record to Supabase immediately so GET can find it
+  try {
+    const { saveAudit } = await import("@/lib/supabase");
+    await saveAudit(record.id, record.url, record as unknown as Record<string, unknown>);
+  } catch { /* Supabase save failed, in-memory fallback */ }
 
-  return NextResponse.json(record);
+  // Run pipeline — save progress to Supabase at each step
+  runAuditPipeline(record).catch(err => console.error("Pipeline error:", err));
+
+  return NextResponse.json({ id, url, status: "queued" });
 }
 
 // GET — Poll audit status (in-memory first, then Supabase fallback)
@@ -153,6 +159,13 @@ export async function GET(req: NextRequest) {
   PageSpeed provides: Lighthouse scores, Core Web Vitals, screenshots.
   AI analysis (Gemini Flash) will be added in Session 3.
 */
+async function saveProgress(record: AuditRecord) {
+  try {
+    const { saveAudit } = await import("@/lib/supabase");
+    await saveAudit(record.id, record.url, record as unknown as Record<string, unknown>);
+  } catch { /* best effort */ }
+}
+
 async function runAuditPipeline(record: AuditRecord) {
   try {
     const { runPageSpeed } = await import("@/lib/pagespeed");
@@ -160,6 +173,7 @@ async function runAuditPipeline(record: AuditRecord) {
 
     // Step 1: Run PageSpeed for both desktop and mobile in parallel
     record.status = "scanning";
+    await saveProgress(record);
 
     let desktopResult, mobileResult;
     try {
@@ -174,8 +188,9 @@ async function runAuditPipeline(record: AuditRecord) {
       mobileResult = null;
     }
 
-    // Step 2: AI Analysis via Gemini Flash
+    // Step 2: AI Analysis
     record.status = "analyzing";
+    await saveProgress(record);
 
     // Step 3: Build device audit results
     if (desktopResult) {
