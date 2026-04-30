@@ -32,6 +32,9 @@ interface PersonaVerdict {
   verdict: string;
   painPoints: string[];
   wouldReturn: boolean;
+  score: number;
+  struggles: string[];
+  fixes: string[];
 }
 
 export interface GeminiAnalysis {
@@ -99,9 +102,12 @@ Respond ONLY with valid JSON matching this exact structure (no markdown, no expl
       "techLevel": "None",
       "verdict": "First person quote of their experience...",
       "painPoints": ["point 1", "point 2", "point 3"],
-      "wouldReturn": false
+      "wouldReturn": false,
+      "score": 5,
+      "struggles": ["Specific page element she struggled with", "Another element"],
+      "fixes": ["Recommended fix for this persona", "Another fix"]
     }
-    // ... all 4 personas
+    // ... all 4 personas with score (0-10), struggles (specific elements), fixes (recommendations)
   ],
   "quickWins": [
     {

@@ -16,6 +16,7 @@ interface Issue {
 interface PersonaVerdict {
   name: string; age: string; emoji: string; techLevel: string; verdict: string;
   painPoints: string[]; wouldReturn: boolean;
+  score?: number; struggles?: string[]; fixes?: string[];
 }
 interface DeviceAudit {
   lighthouse: { performance: number; accessibility: number; bestPractices: number; seo: number };
@@ -390,6 +391,17 @@ export function AuditView({ id }: { id: string }) {
                     {expandedPersona === i && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                         <div className="border-t border-glass-border px-5 pb-5 pt-4">
+                          {p.score != null && (
+                            <div className="mb-4 flex items-center gap-3">
+                              <span className="text-xs font-bold text-muted uppercase tracking-[0.15em]">Score</span>
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-24 rounded-full bg-glass-border overflow-hidden">
+                                  <div className={`h-full rounded-full ${p.score >= 7 ? "bg-emerald-500" : p.score >= 4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${p.score * 10}%` }} />
+                                </div>
+                                <span className={`text-sm font-bold ${p.score >= 7 ? "text-emerald-400" : p.score >= 4 ? "text-amber-400" : "text-red-400"}`}>{p.score}/10</span>
+                              </div>
+                            </div>
+                          )}
                           <p className="mb-4 text-[15px] italic text-muted leading-relaxed">&ldquo;{p.verdict}&rdquo;</p>
                           <p className="mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Pain Points</p>
                           <ul className="space-y-2">
@@ -400,6 +412,32 @@ export function AuditView({ id }: { id: string }) {
                               </li>
                             ))}
                           </ul>
+                          {p.struggles && p.struggles.length > 0 && (
+                            <>
+                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Struggled With</p>
+                              <ul className="space-y-2">
+                                {p.struggles.map((s, si) => (
+                                  <li key={si} className="flex items-start gap-2.5 text-[15px]">
+                                    <span className="text-amber-400 mt-1 text-xs">▲</span>
+                                    <span className="text-muted">{s}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                          {p.fixes && p.fixes.length > 0 && (
+                            <>
+                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Recommended Fixes</p>
+                              <ul className="space-y-2">
+                                {p.fixes.map((f, fi) => (
+                                  <li key={fi} className="flex items-start gap-2.5 text-[15px]">
+                                    <span className="text-emerald-400 mt-1 text-xs">✓</span>
+                                    <span className="text-muted">{f}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
                         </div>
                       </motion.div>
                     )}
