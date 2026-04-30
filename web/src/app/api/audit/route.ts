@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
+// Keep serverless function alive for up to 60s (Vercel Hobby max)
+export const maxDuration = 60;
+
 /*
   In-memory audit store (Session 1 — will migrate to Supabase in Session 2).
   This works for dev/testing. In production, replace with DB calls.
@@ -114,8 +117,8 @@ export async function POST(req: NextRequest) {
   };
   audits.set(id, record);
 
-  // Start the audit pipeline (async, don't await)
-  runAuditPipeline(record);
+  // Fire pipeline in background — client polls GET for status
+  runAuditPipeline(record).catch(err => console.error("Pipeline error:", err));
 
   return NextResponse.json({ id, url, status: "queued" });
 }
