@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --muted: #a1a1aa;
+  --accent: #6C47FF;
+  --accent-light: #8B6FFF;
+  --border: #27272a;
+  --card: #111113;
+  --card-hover: #18181b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Grid background pattern */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(108, 71, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 71, 255, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Glow effect for input */
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(108, 71, 255, 0.3), 0 0 20px rgba(108, 71, 255, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+.glow-border:focus-within {
+  box-shadow: 0 0 0 1px rgba(108, 71, 255, 0.6), 0 0 40px rgba(108, 71, 255, 0.2);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #fafafa 0%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Score circle animation */
+@keyframes score-fill {
+  from { stroke-dashoffset: 283; }
+}
+
+/* Pulse glow for scanning state */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(108, 71, 255, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(108, 71, 255, 0.4); }
+}
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
