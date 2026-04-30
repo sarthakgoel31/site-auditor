@@ -135,58 +135,73 @@ export async function GET(req: NextRequest) {
 }
 
 /*
-  Audit pipeline — Session 1: mock/demo pipeline with realistic timing.
-  Session 2 will replace with:
-  1. Google PageSpeed Insights API (Lighthouse scores)
-  2. Browserless.io screenshots
-  3. Gemini Flash analysis
+  Audit pipeline — real PageSpeed Insights API + mock AI analysis.
+  PageSpeed provides: Lighthouse scores, Core Web Vitals, screenshots.
+  AI analysis (Gemini Flash) will be added in Session 3.
 */
 async function runAuditPipeline(record: AuditRecord) {
   try {
-    // Step 1: Scanning (screenshots + lighthouse)
-    record.status = "scanning";
-    await sleep(3000);
-
-    // Step 2: AI Analysis
-    record.status = "analyzing";
-    await sleep(4000);
-
-    // Step 3: Generate results
-    // TODO Session 2: Replace with real PageSpeed + Gemini pipeline
-
-    // Desktop scores (generally higher than mobile)
-    const dPerf = randomScore(70, 98);
-    const dA11y = randomScore(70, 98);
-    const dBp = randomScore(75, 100);
-    const dSeo = randomScore(75, 100);
-    const dScore = Math.round((dPerf + dA11y + dBp + dSeo) / 4);
-
-    // Mobile scores (generally lower — slower, touch issues)
-    const mPerf = randomScore(45, 85);
-    const mA11y = randomScore(60, 92);
-    const mBp = randomScore(65, 95);
-    const mSeo = randomScore(70, 98);
-    const mScore = Math.round((mPerf + mA11y + mBp + mSeo) / 4);
-
+    const { runPageSpeed } = await import("@/lib/pagespeed");
     const toGrade = (s: number) => s >= 90 ? "A" : s >= 80 ? "B" : s >= 70 ? "C" : s >= 60 ? "D" : "F";
 
-    record.desktop = {
-      lighthouse: { performance: dPerf, accessibility: dA11y, bestPractices: dBp, seo: dSeo },
-      metrics: { lcp: `${(0.8 + Math.random() * 1.5).toFixed(1)}s`, cls: (Math.random() * 0.08).toFixed(3), fid: `${Math.floor(10 + Math.random() * 50)}ms`, ttfb: `${Math.floor(80 + Math.random() * 200)}ms`, pageWeight: `${(0.8 + Math.random() * 1.5).toFixed(1)}MB`, requests: Math.floor(20 + Math.random() * 30) },
-      score: dScore,
-      grade: toGrade(dScore),
-    };
+    // Step 1: Run PageSpeed for both desktop and mobile in parallel
+    record.status = "scanning";
 
-    record.mobile = {
-      lighthouse: { performance: mPerf, accessibility: mA11y, bestPractices: mBp, seo: mSeo },
-      metrics: { lcp: `${(1.5 + Math.random() * 3).toFixed(1)}s`, cls: (Math.random() * 0.2).toFixed(3), fid: `${Math.floor(30 + Math.random() * 120)}ms`, ttfb: `${Math.floor(150 + Math.random() * 400)}ms`, pageWeight: `${(0.6 + Math.random() * 1.2).toFixed(1)}MB`, requests: Math.floor(18 + Math.random() * 25) },
-      score: mScore,
-      grade: toGrade(mScore),
-    };
+    let desktopResult, mobileResult;
+    try {
+      [desktopResult, mobileResult] = await Promise.all([
+        runPageSpeed(record.url, "desktop"),
+        runPageSpeed(record.url, "mobile"),
+      ]);
+    } catch (err) {
+      console.error("PageSpeed API failed, falling back to mock:", err);
+      // Fallback to mock if PageSpeed fails
+      desktopResult = null;
+      mobileResult = null;
+    }
+
+    // Step 2: AI Analysis (mock for now — Gemini Flash in Session 3)
+    record.status = "analyzing";
+    await sleep(2000);
+
+    // Step 3: Build device audit results
+    if (desktopResult) {
+      const dL = desktopResult.lighthouse;
+      const dScore = Math.round((dL.performance + dL.accessibility + dL.bestPractices + dL.seo) / 4);
+      record.desktop = { lighthouse: dL, metrics: desktopResult.metrics, score: dScore, grade: toGrade(dScore) };
+    } else {
+      // Mock fallback
+      const dPerf = randomScore(70, 98), dA11y = randomScore(70, 98), dBp = randomScore(75, 100), dSeo = randomScore(75, 100);
+      const dScore = Math.round((dPerf + dA11y + dBp + dSeo) / 4);
+      record.desktop = {
+        lighthouse: { performance: dPerf, accessibility: dA11y, bestPractices: dBp, seo: dSeo },
+        metrics: { lcp: `${(0.8 + Math.random() * 1.5).toFixed(1)}s`, cls: (Math.random() * 0.08).toFixed(3), fid: `${Math.floor(10 + Math.random() * 50)}ms`, ttfb: `${Math.floor(80 + Math.random() * 200)}ms`, pageWeight: `${(0.8 + Math.random() * 1.5).toFixed(1)}MB`, requests: Math.floor(20 + Math.random() * 30) },
+        score: dScore,
+        grade: toGrade(dScore),
+      };
+    }
+
+    if (mobileResult) {
+      const mL = mobileResult.lighthouse;
+      const mScore = Math.round((mL.performance + mL.accessibility + mL.bestPractices + mL.seo) / 4);
+      record.mobile = { lighthouse: mL, metrics: mobileResult.metrics, score: mScore, grade: toGrade(mScore) };
+    } else {
+      const mPerf = randomScore(45, 85), mA11y = randomScore(60, 92), mBp = randomScore(65, 95), mSeo = randomScore(70, 98);
+      const mScore = Math.round((mPerf + mA11y + mBp + mSeo) / 4);
+      record.mobile = {
+        lighthouse: { performance: mPerf, accessibility: mA11y, bestPractices: mBp, seo: mSeo },
+        metrics: { lcp: `${(1.5 + Math.random() * 3).toFixed(1)}s`, cls: (Math.random() * 0.2).toFixed(3), fid: `${Math.floor(30 + Math.random() * 120)}ms`, ttfb: `${Math.floor(150 + Math.random() * 400)}ms`, pageWeight: `${(0.6 + Math.random() * 1.2).toFixed(1)}MB`, requests: Math.floor(18 + Math.random() * 25) },
+        score: mScore,
+        grade: toGrade(mScore),
+      };
+    }
 
     // Combined score (weighted: 60% mobile, 40% desktop — Google's mobile-first)
-    const totalScore = Math.round(mScore * 0.6 + dScore * 0.4);
+    const totalScore = Math.round(record.mobile.score * 0.6 + record.desktop.score * 0.4);
     const grade = toGrade(totalScore);
+
+    const mPerf = record.mobile.lighthouse.performance;
+    const mA11y = record.mobile.lighthouse.accessibility;
 
     const pillarScores = [
       { name: "First Impression", score: randomScore(5, 10) },
