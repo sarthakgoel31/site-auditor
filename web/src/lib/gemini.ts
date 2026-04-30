@@ -219,8 +219,11 @@ async function tryGroq(
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY not set — add it in Vercel env vars");
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
+    signal: controller.signal,
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
@@ -236,6 +239,7 @@ async function tryGroq(
       response_format: { type: "json_object" },
     }),
   });
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const text = await res.text();
