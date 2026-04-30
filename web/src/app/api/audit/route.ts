@@ -180,14 +180,11 @@ async function runAuditPipeline(record: AuditRecord) {
       const dScore = Math.round((dL.performance + dL.accessibility + dL.bestPractices + dL.seo) / 4);
       record.desktop = { lighthouse: dL, metrics: desktopResult.metrics, score: dScore, grade: toGrade(dScore) };
     } else {
-      // Mock fallback
-      const dPerf = randomScore(70, 98), dA11y = randomScore(70, 98), dBp = randomScore(75, 100), dSeo = randomScore(75, 100);
-      const dScore = Math.round((dPerf + dA11y + dBp + dSeo) / 4);
       record.desktop = {
-        lighthouse: { performance: dPerf, accessibility: dA11y, bestPractices: dBp, seo: dSeo },
-        metrics: { lcp: `${(0.8 + Math.random() * 1.5).toFixed(1)}s`, cls: (Math.random() * 0.08).toFixed(3), fid: `${Math.floor(10 + Math.random() * 50)}ms`, ttfb: `${Math.floor(80 + Math.random() * 200)}ms`, pageWeight: `${(0.8 + Math.random() * 1.5).toFixed(1)}MB`, requests: Math.floor(20 + Math.random() * 30) },
-        score: dScore,
-        grade: toGrade(dScore),
+        lighthouse: { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 },
+        metrics: { lcp: "--", cls: "--", fid: "--", ttfb: "--", pageWeight: "--", requests: 0 },
+        score: 0,
+        grade: "--",
       };
     }
 
@@ -196,13 +193,11 @@ async function runAuditPipeline(record: AuditRecord) {
       const mScore = Math.round((mL.performance + mL.accessibility + mL.bestPractices + mL.seo) / 4);
       record.mobile = { lighthouse: mL, metrics: mobileResult.metrics, score: mScore, grade: toGrade(mScore) };
     } else {
-      const mPerf = randomScore(45, 85), mA11y = randomScore(60, 92), mBp = randomScore(65, 95), mSeo = randomScore(70, 98);
-      const mScore = Math.round((mPerf + mA11y + mBp + mSeo) / 4);
       record.mobile = {
-        lighthouse: { performance: mPerf, accessibility: mA11y, bestPractices: mBp, seo: mSeo },
-        metrics: { lcp: `${(1.5 + Math.random() * 3).toFixed(1)}s`, cls: (Math.random() * 0.2).toFixed(3), fid: `${Math.floor(30 + Math.random() * 120)}ms`, ttfb: `${Math.floor(150 + Math.random() * 400)}ms`, pageWeight: `${(0.6 + Math.random() * 1.2).toFixed(1)}MB`, requests: Math.floor(18 + Math.random() * 25) },
-        score: mScore,
-        grade: toGrade(mScore),
+        lighthouse: { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 },
+        metrics: { lcp: "--", cls: "--", fid: "--", ttfb: "--", pageWeight: "--", requests: 0 },
+        score: 0,
+        grade: "--",
       };
     }
 
