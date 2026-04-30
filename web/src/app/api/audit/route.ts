@@ -81,7 +81,9 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-// POST — Start a new audit
+const HETZNER_API = "http://5.75.129.53:3100";
+
+// POST — Proxy to Hetzner audit API
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
 
@@ -97,63 +99,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
 
-  let url: string;
   try {
-    const parsed = new URL(body.url);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return NextResponse.json({ error: "Only HTTP/HTTPS URLs" }, { status: 400 });
-    }
-    url = parsed.href;
-  } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    const res = await fetch(`${HETZNER_API}/api/audit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: body.url }),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json({ error: "Audit service unavailable" }, { status: 503 });
   }
-
-  const id = randomUUID().slice(0, 8);
-  const record: AuditRecord = {
-    id,
-    url,
-    status: "queued",
-    createdAt: Date.now(),
-  };
-  audits.set(id, record);
-
-  // Save queued state to Supabase
-  await saveProgress(record);
-
-  // Run pipeline — fire and forget but save progress to Supabase at each step
-  runAuditPipeline(record).catch(err => {
-    console.error("Pipeline error:", err);
-    record.status = "error";
-    record.error = err instanceof Error ? err.message : "Unknown error";
-    saveProgress(record);
-  });
-
-  return NextResponse.json({ id, url, status: "queued" });
 }
 
-// GET — Poll audit status (in-memory first, then Supabase fallback)
+// GET — Proxy to Hetzner audit API
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id parameter required" }, { status: 400 });
   }
 
-  // Check in-memory first (for in-progress audits)
-  const record = audits.get(id);
-  if (record) {
-    return NextResponse.json(record);
-  }
-
-  // Fallback to Supabase for completed audits
   try {
-    const { loadAudit } = await import("@/lib/supabase");
-    const stored = await loadAudit(id);
-    if (stored) {
-      return NextResponse.json(stored.data);
-    }
-  } catch { /* Supabase unavailable, fall through */ }
-
-  return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+    const res = await fetch(`${HETZNER_API}/api/audit?id=${id}`);
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json({ error: "Audit service unavailable" }, { status: 503 });
+  }
 }
 
 /*
