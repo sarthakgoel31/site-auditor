@@ -21,7 +21,7 @@ export function Hero() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/audit", {
+      const res = await fetch("http://5.75.129.53:3100/api/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: normalized }),

@@ -153,7 +153,7 @@ export function AuditView({ id }: { id: string }) {
     let interval: NodeJS.Timeout;
     async function poll() {
       try {
-        const res = await fetch(`/api/audit?id=${id}`);
+        const res = await fetch(`http://5.75.129.53:3100/api/audit?id=${id}`);
         if (!res.ok) return;
         const data = await res.json();
         setAudit(data);
