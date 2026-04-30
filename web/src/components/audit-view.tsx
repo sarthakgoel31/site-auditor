@@ -30,6 +30,7 @@ interface AuditResult {
   desktop?: DeviceAudit; mobile?: DeviceAudit;
   pillars?: PillarDetail[]; issues?: Issue[]; personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
+  llmUsed?: string;
   error?: string;
 }
 
@@ -227,6 +228,11 @@ export function AuditView({ id }: { id: string }) {
           <div>
             <p className="text-5xl font-bold">{audit.score}<span className="text-2xl text-muted">/100</span></p>
             <p className="mt-2 text-lg text-muted">{audit.url}</p>
+            {audit.llmUsed && (
+              <p className="mt-2 inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                Analysis by {audit.llmUsed}
+              </p>
+            )}
           </div>
         </motion.div>
 

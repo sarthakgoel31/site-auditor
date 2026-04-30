@@ -56,6 +56,7 @@ interface AuditRecord {
   issues?: Issue[];
   personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
+  llmUsed?: string;
   error?: string;
 }
 
@@ -226,6 +227,7 @@ async function runAuditPipeline(record: AuditRecord) {
       record.issues = analysis.issues;
       record.personas = analysis.personas;
       record.quickWins = analysis.quickWins;
+      record.llmUsed = analysis.llmUsed || "Gemini Flash";
     } catch (err) {
       console.error("Gemini analysis failed, using fallback:", err);
       // Minimal fallback

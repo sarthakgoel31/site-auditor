@@ -1,6 +1,6 @@
 /**
- * Gemini Flash AI analysis — free tier, 15 RPM.
- * Analyzes PageSpeed screenshots from 4 persona perspectives across 8 UX pillars.
+ * AI analysis with fallback chain: Gemini Flash → Groq → DeepSeek.
+ * All free tier. Returns analysis + which LLM was used.
  */
 
 interface PillarDetail {
@@ -39,6 +39,7 @@ export interface GeminiAnalysis {
   issues: Issue[];
   personas: PersonaVerdict[];
   quickWins: { title: string; impact: string; effort: string; description: string }[];
+  llmUsed?: string;
 }
 
 const SYSTEM_PROMPT = `You are a UX auditor. You analyze website screenshots and Lighthouse data to produce actionable UX reports.
@@ -122,7 +123,33 @@ IMPORTANT:
 - Be specific and actionable, not generic
 - Use the Lighthouse scores provided to inform your Performance and Accessibility pillar scores`;
 
-export async function analyzeWithGemini(
+function buildUserPrompt(
+  url: string,
+  lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
+  lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
+  hasDesktop: boolean,
+  hasMobile: boolean,
+): string {
+  return `Analyze this website: ${url}
+
+Lighthouse Desktop: Performance=${lighthouseDesktop.performance}, Accessibility=${lighthouseDesktop.accessibility}, Best Practices=${lighthouseDesktop.bestPractices}, SEO=${lighthouseDesktop.seo}
+Lighthouse Mobile: Performance=${lighthouseMobile.performance}, Accessibility=${lighthouseMobile.accessibility}, Best Practices=${lighthouseMobile.bestPractices}, SEO=${lighthouseMobile.seo}
+
+${hasDesktop ? "Desktop screenshot attached." : "No desktop screenshot available."} ${hasMobile ? "Mobile screenshot attached." : "No mobile screenshot available."}
+
+Produce the full UX audit JSON as specified.`;
+}
+
+function validateAnalysis(parsed: GeminiAnalysis): void {
+  if (!parsed.pillars || parsed.pillars.length !== 8) throw new Error("Expected 8 pillars");
+  if (!parsed.personas || parsed.personas.length !== 4) throw new Error("Expected 4 personas");
+  if (!parsed.issues || parsed.issues.length === 0) throw new Error("Expected at least 1 issue");
+  if (!parsed.quickWins || parsed.quickWins.length === 0) throw new Error("Expected at least 1 quick win");
+}
+
+// ── Gemini Flash ────────────────────────────────────────────
+
+async function tryGemini(
   url: string,
   desktopScreenshot: string | undefined,
   mobileScreenshot: string | undefined,
@@ -133,19 +160,8 @@ export async function analyzeWithGemini(
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+  parts.push({ text: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, !!desktopScreenshot, !!mobileScreenshot) });
 
-  parts.push({
-    text: `Analyze this website: ${url}
-
-Lighthouse Desktop: Performance=${lighthouseDesktop.performance}, Accessibility=${lighthouseDesktop.accessibility}, Best Practices=${lighthouseDesktop.bestPractices}, SEO=${lighthouseDesktop.seo}
-Lighthouse Mobile: Performance=${lighthouseMobile.performance}, Accessibility=${lighthouseMobile.accessibility}, Best Practices=${lighthouseMobile.bestPractices}, SEO=${lighthouseMobile.seo}
-
-${desktopScreenshot ? "Desktop screenshot attached." : "No desktop screenshot available."} ${mobileScreenshot ? "Mobile screenshot attached." : "No mobile screenshot available."}
-
-Produce the full UX audit JSON as specified.`,
-  });
-
-  // Attach screenshots if available (base64 from PageSpeed)
   if (desktopScreenshot) {
     const base64 = desktopScreenshot.replace(/^data:image\/\w+;base64,/, "");
     parts.push({ inlineData: { mimeType: "image/jpeg", data: base64 } });
@@ -182,12 +198,120 @@ Produce the full UX audit JSON as specified.`,
   if (!content) throw new Error("No content in Gemini response");
 
   const parsed = JSON.parse(content) as GeminiAnalysis;
-
-  // Validate structure
-  if (!parsed.pillars || parsed.pillars.length !== 8) throw new Error("Expected 8 pillars");
-  if (!parsed.personas || parsed.personas.length !== 4) throw new Error("Expected 4 personas");
-  if (!parsed.issues || parsed.issues.length === 0) throw new Error("Expected at least 1 issue");
-  if (!parsed.quickWins || parsed.quickWins.length === 0) throw new Error("Expected at least 1 quick win");
-
+  validateAnalysis(parsed);
+  parsed.llmUsed = "Gemini Flash";
   return parsed;
+}
+
+// ── Groq (Llama 3.3 70B) ───────────────────────────────────
+
+async function tryGroq(
+  url: string,
+  lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
+  lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
+): Promise<GeminiAnalysis> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY not set");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
+      ],
+      temperature: 0.3,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No content in Groq response");
+
+  const parsed = JSON.parse(content) as GeminiAnalysis;
+  validateAnalysis(parsed);
+  parsed.llmUsed = "Groq Llama 3.3";
+  return parsed;
+}
+
+// ── DeepSeek ────────────────────────────────────────────────
+
+async function tryDeepSeek(
+  url: string,
+  lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
+  lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
+): Promise<GeminiAnalysis> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("DEEPSEEK_API_KEY not set");
+
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
+      ],
+      temperature: 0.3,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`DeepSeek API error (${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No content in DeepSeek response");
+
+  const parsed = JSON.parse(content) as GeminiAnalysis;
+  validateAnalysis(parsed);
+  parsed.llmUsed = "DeepSeek";
+  return parsed;
+}
+
+// ── Main: Fallback chain ────────────────────────────────────
+
+export async function analyzeWithGemini(
+  url: string,
+  desktopScreenshot: string | undefined,
+  mobileScreenshot: string | undefined,
+  lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
+  lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
+): Promise<GeminiAnalysis> {
+  // Try Gemini first (supports screenshots)
+  try {
+    return await tryGemini(url, desktopScreenshot, mobileScreenshot, lighthouseDesktop, lighthouseMobile);
+  } catch (err) {
+    console.warn("Gemini failed, trying Groq:", err instanceof Error ? err.message : err);
+  }
+
+  // Try Groq (no screenshots, but fast)
+  try {
+    return await tryGroq(url, lighthouseDesktop, lighthouseMobile);
+  } catch (err) {
+    console.warn("Groq failed, trying DeepSeek:", err instanceof Error ? err.message : err);
+  }
+
+  // Try DeepSeek (last resort)
+  return await tryDeepSeek(url, lighthouseDesktop, lighthouseMobile);
 }
