@@ -32,6 +32,7 @@ interface AuditResult {
   pillars?: PillarDetail[]; issues?: Issue[]; personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
   llmUsed?: string;
+  createdAt?: number;
   error?: string;
 }
 
@@ -183,9 +184,17 @@ export function AuditView({ id }: { id: string }) {
   /* ─── Progress ─── */
   if (audit.status !== "complete") {
     const cur = scanSteps.findIndex((s) => s.key === audit.status);
-    const elapsed = Math.round((Date.now() - (audit.createdAt || Date.now())) / 1000);
-    const estTotal = cur <= 1 ? 45 : 60; // scanning ~30s, analyzing ~15s
-    const remaining = Math.max(estTotal - elapsed, 5);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [elapsed, setElapsed] = useState(0);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const start = audit.createdAt || Date.now();
+      const iv = setInterval(() => setElapsed(Math.round((Date.now() - start) / 1000)), 1000);
+      return () => clearInterval(iv);
+    }, [audit.createdAt]);
+    const estTotal = 55; // ~55s average (desktop 25s + mobile 25s + LLM 5s)
+    const pct = Math.min(Math.round((elapsed / estTotal) * 100), 95);
+    const remaining = Math.max(estTotal - elapsed, 1);
     return (
       <div className="grid-bg flex min-h-screen flex-col items-center justify-center gap-10 px-6">
         <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-accent/[0.04] blur-[150px]" />
@@ -200,6 +209,10 @@ export function AuditView({ id }: { id: string }) {
           <h1 className="mb-3 text-3xl font-bold">Auditing {audit.url}</h1>
           <p className="text-lg text-muted">{scanSteps[cur]?.detail}</p>
           <p className="mt-2 text-sm text-muted">~{remaining}s remaining</p>
+          <div className="mt-4 mx-auto w-64 h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <motion.div className="h-full rounded-full bg-accent" animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }} />
+          </div>
+          <p className="mt-1.5 text-xs text-muted">{elapsed}s elapsed</p>
         </div>
         <div className="flex gap-5">
           {scanSteps.slice(0, -1).map((step, i) => (
