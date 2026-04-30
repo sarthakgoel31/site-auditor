@@ -119,19 +119,29 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ id, url, status: "queued" });
 }
 
-// GET — Poll audit status
+// GET — Poll audit status (in-memory first, then Supabase fallback)
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id parameter required" }, { status: 400 });
   }
 
+  // Check in-memory first (for in-progress audits)
   const record = audits.get(id);
-  if (!record) {
-    return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+  if (record) {
+    return NextResponse.json(record);
   }
 
-  return NextResponse.json(record);
+  // Fallback to Supabase for completed audits
+  try {
+    const { loadAudit } = await import("@/lib/supabase");
+    const stored = await loadAudit(id);
+    if (stored) {
+      return NextResponse.json(stored.data);
+    }
+  } catch { /* Supabase unavailable, fall through */ }
+
+  return NextResponse.json({ error: "Audit not found" }, { status: 404 });
 }
 
 /*
@@ -242,6 +252,12 @@ async function runAuditPipeline(record: AuditRecord) {
     }
 
     record.status = "complete";
+
+    // Persist to Supabase for permanent shareable links
+    try {
+      const { saveAudit } = await import("@/lib/supabase");
+      await saveAudit(record.id, record.url, record as unknown as Record<string, unknown>);
+    } catch { /* Supabase unavailable, in-memory only */ }
   } catch (err) {
     record.status = "error";
     record.error = err instanceof Error ? err.message : "Unknown error";
