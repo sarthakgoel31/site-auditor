@@ -202,8 +202,19 @@ async function runAuditPipeline(record: AuditRecord) {
     }
 
     // Combined score (weighted: 60% mobile, 40% desktop — Google's mobile-first)
-    const totalScore = Math.round(record.mobile.score * 0.6 + record.desktop.score * 0.4);
-    const grade = toGrade(totalScore);
+    const hasDesktop = desktopResult !== null;
+    const hasMobile = mobileResult !== null;
+    let totalScore: number;
+    if (hasDesktop && hasMobile) {
+      totalScore = Math.round(record.mobile.score * 0.6 + record.desktop.score * 0.4);
+    } else if (hasDesktop) {
+      totalScore = record.desktop.score;
+    } else if (hasMobile) {
+      totalScore = record.mobile.score;
+    } else {
+      totalScore = 0; // Will be updated after AI analysis from pillar scores
+    }
+    const grade = totalScore > 0 ? toGrade(totalScore) : "--";
 
     record.score = totalScore;
     record.grade = grade;
@@ -248,6 +259,13 @@ async function runAuditPipeline(record: AuditRecord) {
       ];
       record.issues = [{ severity: "Medium", pillar: "General", issue: "AI-powered detailed analysis was unavailable. Scores are based on Lighthouse data only.", persona: "Business User", fix: "Try auditing again for full AI analysis.", impact: "medium", effort: "easy" }];
       record.quickWins = [{ title: "Re-run audit", impact: "High — get full AI analysis", effort: "1 minute", description: "AI analysis was unavailable. Re-running usually works." }];
+    }
+
+    // If PageSpeed failed but AI worked, derive score from pillar averages
+    if (record.score === 0 && record.pillars && record.pillars.length > 0) {
+      const avg = record.pillars.reduce((sum, p) => sum + (p.score || 0), 0) / record.pillars.length;
+      record.score = Math.round(avg * 10); // pillars are 0-10, score is 0-100
+      record.grade = toGrade(record.score);
     }
 
     record.status = "complete";

@@ -55,6 +55,7 @@ const gradeColors: Record<string, { bg: string; text: string; border: string }> 
   C: { bg: "bg-yellow-500/10", text: "text-yellow-400", border: "border-yellow-500/25" },
   D: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/25" },
   F: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/25" },
+  "--": { bg: "bg-zinc-500/10", text: "text-zinc-400", border: "border-zinc-500/25" },
 };
 const pillarColors = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4", "#ec4899", "#f97316"];
 
@@ -98,7 +99,7 @@ function Section({ title, count, children, defaultOpen = false }: {
 
 /* ─── Device Tab Panel ─── */
 function DevicePanel({ device, label }: { device: DeviceAudit; label: string }) {
-  const gc = gradeColors[device.grade];
+  const gc = gradeColors[device.grade] || gradeColors["--"];
   return (
     <div className="space-y-6">
       {/* Mini grade + Lighthouse */}
