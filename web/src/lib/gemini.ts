@@ -137,7 +137,7 @@ Lighthouse Mobile: Performance=${lighthouseMobile.performance}, Accessibility=${
 
 ${hasDesktop ? "Desktop screenshot attached." : "No desktop screenshot available."} ${hasMobile ? "Mobile screenshot attached." : "No mobile screenshot available."}
 
-Produce the full UX audit JSON as specified.`;
+Produce the full UX audit as a single JSON object matching the specified structure.`;
 }
 
 function validateAnalysis(parsed: GeminiAnalysis): void {
