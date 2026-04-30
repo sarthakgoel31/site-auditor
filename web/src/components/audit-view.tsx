@@ -376,7 +376,7 @@ export function AuditView({ id }: { id: string }) {
                 <div key={p.name} className="rounded-xl glass-card overflow-hidden">
                   <button onClick={() => setExpandedPersona(expandedPersona === i ? null : i)}
                     className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
-                    <span className="text-4xl">{p.emoji}</span>
+                    <span className="text-4xl">{{ "Grandma": "👵", "Teen": "🧑‍💻", "Business User": "👔", "Screen Reader": "♿" }[p.name] || p.emoji || "👤"}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-[15px] font-bold">{p.name}</h3>
