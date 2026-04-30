@@ -149,6 +149,7 @@ export function AuditView({ id }: { id: string }) {
   const [expandedIssue, setExpandedIssue] = useState<number | null>(null);
   const [expandedPersona, setExpandedPersona] = useState<number | null>(null);
   const [issueFilter, setIssueFilter] = useState("all");
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -165,6 +166,14 @@ export function AuditView({ id }: { id: string }) {
     interval = setInterval(poll, 2000);
     return () => clearInterval(interval);
   }, [id]);
+
+  // Timer for loading screen
+  useEffect(() => {
+    if (!audit || audit.status === "complete" || audit.status === "error") return;
+    const start = audit.createdAt || Date.now();
+    const iv = setInterval(() => setElapsed(Math.round((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [audit?.status, audit?.createdAt]);
 
   if (!audit) return (
     <div className="grid-bg flex min-h-screen items-center justify-center">
@@ -184,15 +193,7 @@ export function AuditView({ id }: { id: string }) {
   /* ─── Progress ─── */
   if (audit.status !== "complete") {
     const cur = scanSteps.findIndex((s) => s.key === audit.status);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [elapsed, setElapsed] = useState(0);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      const start = audit.createdAt || Date.now();
-      const iv = setInterval(() => setElapsed(Math.round((Date.now() - start) / 1000)), 1000);
-      return () => clearInterval(iv);
-    }, [audit.createdAt]);
-    const estTotal = 55; // ~55s average (desktop 25s + mobile 25s + LLM 5s)
+    const estTotal = 55;
     const pct = Math.min(Math.round((elapsed / estTotal) * 100), 95);
     const remaining = Math.max(estTotal - elapsed, 1);
     return (
