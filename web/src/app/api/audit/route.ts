@@ -36,6 +36,13 @@ interface PersonaVerdict {
   wouldReturn: boolean;
 }
 
+interface DeviceAudit {
+  lighthouse: { performance: number; accessibility: number; bestPractices: number; seo: number };
+  metrics: { lcp: string; cls: string; fid: string; ttfb: string; pageWeight: string; requests: number };
+  score: number;
+  grade: string;
+}
+
 interface AuditRecord {
   id: string;
   url: string;
@@ -43,12 +50,12 @@ interface AuditRecord {
   createdAt: number;
   grade?: string;
   score?: number;
-  lighthouse?: { performance: number; accessibility: number; bestPractices: number; seo: number };
+  desktop?: DeviceAudit;
+  mobile?: DeviceAudit;
   pillars?: PillarDetail[];
   issues?: Issue[];
   personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
-  metrics?: { lcp: string; cls: string; fid: string; ttfb: string; pageWeight: string; requests: number };
   error?: string;
 }
 
@@ -146,10 +153,40 @@ async function runAuditPipeline(record: AuditRecord) {
 
     // Step 3: Generate results
     // TODO Session 2: Replace with real PageSpeed + Gemini pipeline
-    const perf = randomScore(60, 98);
-    const a11y = randomScore(65, 95);
-    const bp = randomScore(70, 100);
-    const seo = randomScore(70, 100);
+
+    // Desktop scores (generally higher than mobile)
+    const dPerf = randomScore(70, 98);
+    const dA11y = randomScore(70, 98);
+    const dBp = randomScore(75, 100);
+    const dSeo = randomScore(75, 100);
+    const dScore = Math.round((dPerf + dA11y + dBp + dSeo) / 4);
+
+    // Mobile scores (generally lower — slower, touch issues)
+    const mPerf = randomScore(45, 85);
+    const mA11y = randomScore(60, 92);
+    const mBp = randomScore(65, 95);
+    const mSeo = randomScore(70, 98);
+    const mScore = Math.round((mPerf + mA11y + mBp + mSeo) / 4);
+
+    const toGrade = (s: number) => s >= 90 ? "A" : s >= 80 ? "B" : s >= 70 ? "C" : s >= 60 ? "D" : "F";
+
+    record.desktop = {
+      lighthouse: { performance: dPerf, accessibility: dA11y, bestPractices: dBp, seo: dSeo },
+      metrics: { lcp: `${(0.8 + Math.random() * 1.5).toFixed(1)}s`, cls: (Math.random() * 0.08).toFixed(3), fid: `${Math.floor(10 + Math.random() * 50)}ms`, ttfb: `${Math.floor(80 + Math.random() * 200)}ms`, pageWeight: `${(0.8 + Math.random() * 1.5).toFixed(1)}MB`, requests: Math.floor(20 + Math.random() * 30) },
+      score: dScore,
+      grade: toGrade(dScore),
+    };
+
+    record.mobile = {
+      lighthouse: { performance: mPerf, accessibility: mA11y, bestPractices: mBp, seo: mSeo },
+      metrics: { lcp: `${(1.5 + Math.random() * 3).toFixed(1)}s`, cls: (Math.random() * 0.2).toFixed(3), fid: `${Math.floor(30 + Math.random() * 120)}ms`, ttfb: `${Math.floor(150 + Math.random() * 400)}ms`, pageWeight: `${(0.6 + Math.random() * 1.2).toFixed(1)}MB`, requests: Math.floor(18 + Math.random() * 25) },
+      score: mScore,
+      grade: toGrade(mScore),
+    };
+
+    // Combined score (weighted: 60% mobile, 40% desktop — Google's mobile-first)
+    const totalScore = Math.round(mScore * 0.6 + dScore * 0.4);
+    const grade = toGrade(totalScore);
 
     const pillarScores = [
       { name: "First Impression", score: randomScore(5, 10) },
@@ -157,19 +194,10 @@ async function runAuditPipeline(record: AuditRecord) {
       { name: "Forms & Inputs", score: randomScore(4, 10) },
       { name: "Trust & Credibility", score: randomScore(4, 10) },
       { name: "Mobile Responsive", score: randomScore(5, 10) },
-      { name: "Performance", score: Math.round(perf / 10) },
-      { name: "Accessibility", score: Math.round(a11y / 10) },
+      { name: "Performance", score: Math.round(mPerf / 10) },
+      { name: "Accessibility", score: Math.round(mA11y / 10) },
       { name: "Copy & Clarity", score: randomScore(5, 10) },
     ];
-
-    const weights = [0.15, 0.15, 0.15, 0.10, 0.15, 0.10, 0.10, 0.10];
-    const totalScore = Math.round(
-      pillarScores.reduce((sum, p, i) => sum + p.score * 10 * weights[i], 0)
-    );
-
-    const grade = totalScore >= 90 ? "A" : totalScore >= 80 ? "B" : totalScore >= 70 ? "C" : totalScore >= 60 ? "D" : "F";
-
-    record.lighthouse = { performance: perf, accessibility: a11y, bestPractices: bp, seo };
     record.pillars = [
       { name: "First Impression", score: pillarScores[0].score, weight: "15%", icon: "👁", summary: "Value proposition needs to be clearer within the first 5 seconds. CTA is present but doesn't stand out.", checks: [
         { label: "Value prop clear in 5s", passed: pillarScores[0].score >= 7, detail: "Main heading communicates the offering but could be more specific about the benefit." },
@@ -201,16 +229,16 @@ async function runAuditPipeline(record: AuditRecord) {
         { label: "Images scale properly", passed: true, detail: "Images use responsive sizing and don't overflow containers." },
         { label: "No hidden content", passed: pillarScores[4].score >= 7, detail: "All critical information visible on mobile, though some sections are harder to scan." },
       ]},
-      { name: "Performance", score: pillarScores[5].score, weight: "10%", icon: "⚡", summary: `Lighthouse Performance score: ${perf}. ${perf >= 80 ? "Good" : "Needs optimization"}.`, checks: [
-        { label: "LCP < 2.5s", passed: perf >= 70, detail: `Largest Contentful Paint measured at ${(1.2 + Math.random() * 2.5).toFixed(1)}s.` },
-        { label: "CLS < 0.1", passed: perf >= 60, detail: `Cumulative Layout Shift: ${(Math.random() * 0.15).toFixed(3)}.` },
+      { name: "Performance", score: pillarScores[5].score, weight: "10%", icon: "⚡", summary: `Lighthouse Performance score: ${mPerf}. ${mPerf >= 80 ? "Good" : "Needs optimization"}.`, checks: [
+        { label: "LCP < 2.5s", passed: mPerf >= 70, detail: `Largest Contentful Paint measured at ${(1.2 + Math.random() * 2.5).toFixed(1)}s.` },
+        { label: "CLS < 0.1", passed: mPerf >= 60, detail: `Cumulative Layout Shift: ${(Math.random() * 0.15).toFixed(3)}.` },
         { label: "FID < 100ms", passed: true, detail: "First Input Delay within acceptable range." },
         { label: "Total page weight < 3MB", passed: true, detail: `Total page size: ${(0.8 + Math.random() * 1.5).toFixed(1)}MB.` },
       ]},
-      { name: "Accessibility", score: pillarScores[6].score, weight: "10%", icon: "♿", summary: `Lighthouse Accessibility: ${a11y}. Key issues with alt text and color contrast.`, checks: [
-        { label: "Color contrast ≥ 4.5:1", passed: a11y >= 80, detail: "Most text meets contrast requirements but some muted text falls below 4.5:1 ratio." },
+      { name: "Accessibility", score: pillarScores[6].score, weight: "10%", icon: "♿", summary: `Lighthouse Accessibility: ${mA11y}. Key issues with alt text and color contrast.`, checks: [
+        { label: "Color contrast ≥ 4.5:1", passed: mA11y >= 80, detail: "Most text meets contrast requirements but some muted text falls below 4.5:1 ratio." },
         { label: "All images have alt text", passed: false, detail: "3 decorative images and 1 content image missing alt attributes." },
-        { label: "Keyboard navigable", passed: a11y >= 70, detail: "Tab order follows visual flow. Focus indicators visible on interactive elements." },
+        { label: "Keyboard navigable", passed: mA11y >= 70, detail: "Tab order follows visual flow. Focus indicators visible on interactive elements." },
         { label: "ARIA labels on interactive elements", passed: false, detail: "Icon-only buttons missing aria-label attributes." },
       ]},
       { name: "Copy & Clarity", score: pillarScores[7].score, weight: "10%", icon: "✍️", summary: "Copy is generally clear but some jargon slips through in secondary UI.", checks: [
@@ -244,15 +272,6 @@ async function runAuditPipeline(record: AuditRecord) {
       { title: "Add alt text to images", impact: "Medium — fixes 4 accessibility violations", effort: "10 minutes", description: "Add descriptive alt attributes to all content images. Use alt=\"\" for decorative images." },
       { title: "Increase touch targets", impact: "High — fixes mobile usability for all users", effort: "15 minutes", description: "Add padding to nav links, buttons, and footer links so they are at least 44x44px." },
     ];
-    record.metrics = {
-      lcp: `${(1.2 + Math.random() * 2.5).toFixed(1)}s`,
-      cls: (Math.random() * 0.15).toFixed(3),
-      fid: `${Math.floor(20 + Math.random() * 80)}ms`,
-      ttfb: `${Math.floor(100 + Math.random() * 400)}ms`,
-      pageWeight: `${(0.8 + Math.random() * 1.5).toFixed(1)}MB`,
-      requests: Math.floor(20 + Math.random() * 40),
-    };
-
     record.status = "complete";
   } catch (err) {
     record.status = "error";

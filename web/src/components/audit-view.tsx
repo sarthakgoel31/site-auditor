@@ -17,14 +17,19 @@ interface PersonaVerdict {
   name: string; age: string; emoji: string; techLevel: string; verdict: string;
   painPoints: string[]; wouldReturn: boolean;
 }
+interface DeviceAudit {
+  lighthouse: { performance: number; accessibility: number; bestPractices: number; seo: number };
+  metrics: { lcp: string; cls: string; fid: string; ttfb: string; pageWeight: string; requests: number };
+  score: number;
+  grade: string;
+}
 interface AuditResult {
   id: string; url: string;
   status: "queued" | "scanning" | "analyzing" | "complete" | "error";
   grade?: string; score?: number;
-  lighthouse?: { performance: number; accessibility: number; bestPractices: number; seo: number };
+  desktop?: DeviceAudit; mobile?: DeviceAudit;
   pillars?: PillarDetail[]; issues?: Issue[]; personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
-  metrics?: { lcp: string; cls: string; fid: string; ttfb: string; pageWeight: string; requests: number };
   error?: string;
 }
 
@@ -89,9 +94,53 @@ function Section({ title, count, children, defaultOpen = false }: {
   );
 }
 
+/* ─── Device Tab Panel ─── */
+function DevicePanel({ device, label }: { device: DeviceAudit; label: string }) {
+  const gc = gradeColors[device.grade];
+  return (
+    <div className="space-y-6">
+      {/* Mini grade + Lighthouse */}
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+        <div className="flex items-center gap-5">
+          <div className={`flex h-16 w-16 items-center justify-center rounded-2xl border ${gc.border} ${gc.bg} text-2xl font-bold ${gc.text}`}>
+            {device.grade}
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{device.score}<span className="text-base text-muted">/100</span></p>
+            <p className="text-sm text-muted">{label} Score</p>
+          </div>
+        </div>
+        <div className="flex gap-5">
+          <ScoreCircle score={device.lighthouse.performance} label="Perf" color="#22c55e" size={60} delay={0} />
+          <ScoreCircle score={device.lighthouse.accessibility} label="A11y" color="#3b82f6" size={60} delay={0.05} />
+          <ScoreCircle score={device.lighthouse.bestPractices} label="BP" color="#f59e0b" size={60} delay={0.1} />
+          <ScoreCircle score={device.lighthouse.seo} label="SEO" color="#a855f7" size={60} delay={0.15} />
+        </div>
+      </div>
+      {/* Metrics */}
+      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+        {[
+          { label: "LCP", value: device.metrics.lcp, good: parseFloat(device.metrics.lcp) < 2.5 },
+          { label: "CLS", value: device.metrics.cls, good: parseFloat(device.metrics.cls) < 0.1 },
+          { label: "FID", value: device.metrics.fid, good: parseInt(device.metrics.fid) < 100 },
+          { label: "TTFB", value: device.metrics.ttfb, good: parseInt(device.metrics.ttfb) < 300 },
+          { label: "Size", value: device.metrics.pageWeight, good: parseFloat(device.metrics.pageWeight) < 2 },
+          { label: "Requests", value: String(device.metrics.requests), good: device.metrics.requests < 40 },
+        ].map((m) => (
+          <div key={m.label} className="rounded-xl glass-card p-3 text-center">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">{m.label}</p>
+            <p className={`mt-1 text-lg font-bold font-mono ${m.good ? "text-emerald-400" : "text-orange-400"}`}>{m.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main ─── */
 export function AuditView({ id }: { id: string }) {
   const [audit, setAudit] = useState<AuditResult | null>(null);
+  const [deviceTab, setDeviceTab] = useState<"combined" | "desktop" | "mobile">("combined");
   const [expandedPillar, setExpandedPillar] = useState<number | null>(null);
   const [expandedIssue, setExpandedIssue] = useState<number | null>(null);
   const [expandedPersona, setExpandedPersona] = useState<number | null>(null);
@@ -181,34 +230,63 @@ export function AuditView({ id }: { id: string }) {
           </div>
         </motion.div>
 
-        {/* ── LIGHTHOUSE ── */}
-        {audit.lighthouse && (
+        {/* ── DEVICE TABS: Desktop / Mobile / Combined ── */}
+        {(audit.desktop || audit.mobile) && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="mb-10 flex justify-center gap-8 md:gap-12">
-            <ScoreCircle score={audit.lighthouse.performance} label="Performance" color="#22c55e" size={90} delay={0.3} />
-            <ScoreCircle score={audit.lighthouse.accessibility} label="Accessibility" color="#3b82f6" size={90} delay={0.4} />
-            <ScoreCircle score={audit.lighthouse.bestPractices} label="Best Practices" color="#f59e0b" size={90} delay={0.5} />
-            <ScoreCircle score={audit.lighthouse.seo} label="SEO" color="#a855f7" size={90} delay={0.6} />
-          </motion.div>
-        )}
-
-        {/* ── CORE WEB VITALS ── */}
-        {audit.metrics && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="mb-10 grid grid-cols-3 gap-4 md:grid-cols-6">
-            {[
-              { label: "LCP", value: audit.metrics.lcp, good: parseFloat(audit.metrics.lcp) < 2.5 },
-              { label: "CLS", value: audit.metrics.cls, good: parseFloat(audit.metrics.cls) < 0.1 },
-              { label: "FID", value: audit.metrics.fid, good: parseInt(audit.metrics.fid) < 100 },
-              { label: "TTFB", value: audit.metrics.ttfb, good: parseInt(audit.metrics.ttfb) < 300 },
-              { label: "Size", value: audit.metrics.pageWeight, good: parseFloat(audit.metrics.pageWeight) < 2 },
-              { label: "Requests", value: String(audit.metrics.requests), good: audit.metrics.requests < 40 },
-            ].map((m) => (
-              <div key={m.label} className="rounded-xl glass-card p-4 text-center">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wider">{m.label}</p>
-                <p className={`mt-1 text-xl font-bold font-mono ${m.good ? "text-emerald-400" : "text-orange-400"}`}>{m.value}</p>
-              </div>
-            ))}
+            className="mb-10 glass-surface rounded-2xl overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex border-b border-glass-border">
+              {(["combined", "desktop", "mobile"] as const).map((tab) => (
+                <button key={tab} onClick={() => setDeviceTab(tab)}
+                  className={`flex-1 py-4 text-sm font-semibold transition-all ${
+                    deviceTab === tab
+                      ? "text-accent border-b-2 border-accent bg-white/[0.02]"
+                      : "text-muted hover:text-foreground hover:bg-white/[0.02]"
+                  }`}>
+                  <div className="flex items-center justify-center gap-2">
+                    {tab === "combined" && <span>🏆</span>}
+                    {tab === "desktop" && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+                    )}
+                    {tab === "mobile" && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" /></svg>
+                    )}
+                    {tab === "combined" ? "Combined" : tab === "desktop" ? "Desktop" : "Mobile"}
+                    {tab !== "combined" && (
+                      <span className={`ml-1 rounded-md px-1.5 py-0.5 text-xs font-bold ${
+                        (tab === "desktop" ? audit.desktop?.score ?? 0 : audit.mobile?.score ?? 0) >= 80 ? "bg-emerald-500/10 text-emerald-400" : "bg-orange-500/10 text-orange-400"
+                      }`}>
+                        {tab === "desktop" ? audit.desktop?.score : audit.mobile?.score}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {/* Tab content */}
+            <div className="p-6">
+              {deviceTab === "combined" && audit.desktop && audit.mobile && (
+                <div className="flex flex-col items-center gap-6">
+                  <p className="text-sm text-muted">Weighted: 60% Mobile + 40% Desktop (Google mobile-first indexing)</p>
+                  <div className="flex items-center gap-12">
+                    <div className="text-center">
+                      <p className="text-xs text-muted mb-2">Desktop</p>
+                      <ScoreCircle score={audit.desktop.score} label="" color="#3b82f6" size={80} delay={0} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-accent">{audit.score}</p>
+                      <p className="text-sm text-muted">Combined</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted mb-2">Mobile</p>
+                      <ScoreCircle score={audit.mobile.score} label="" color="#f59e0b" size={80} delay={0.1} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {deviceTab === "desktop" && audit.desktop && <DevicePanel device={audit.desktop} label="Desktop" />}
+              {deviceTab === "mobile" && audit.mobile && <DevicePanel device={audit.mobile} label="Mobile" />}
+            </div>
           </motion.div>
         )}
 
