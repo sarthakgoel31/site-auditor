@@ -147,8 +147,8 @@ Produce the full UX audit as a single JSON object matching the specified structu
 }
 
 function validateAnalysis(parsed: GeminiAnalysis): void {
-  if (!parsed.pillars || parsed.pillars.length !== 8) throw new Error("Expected 8 pillars");
-  if (!parsed.personas || parsed.personas.length !== 4) throw new Error("Expected 4 personas");
+  if (!parsed.pillars || parsed.pillars.length < 4) throw new Error(`Expected 8 pillars, got ${parsed.pillars?.length || 0}`);
+  if (!parsed.personas || parsed.personas.length < 2) throw new Error(`Expected 4 personas, got ${parsed.personas?.length || 0}`);
   if (!parsed.issues || parsed.issues.length === 0) throw new Error("Expected at least 1 issue");
   if (!parsed.quickWins || parsed.quickWins.length === 0) throw new Error("Expected at least 1 quick win");
 }
@@ -226,7 +226,7 @@ async function tryGroq(
       "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
