@@ -38,7 +38,10 @@ export async function runPageSpeed(url: string, strategy: "desktop" | "mobile"):
   const apiKey = process.env.PAGESPEED_API_KEY;
   if (apiKey) apiUrl.searchParams.set("key", apiKey);
 
-  const res = await fetch(apiUrl.toString(), { next: { revalidate: 0 } });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  const res = await fetch(apiUrl.toString(), { next: { revalidate: 0 }, signal: controller.signal });
+  clearTimeout(timeout);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`PageSpeed API error (${res.status}): ${text.slice(0, 200)}`);

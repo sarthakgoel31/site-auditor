@@ -188,7 +188,7 @@ async function tryGemini(
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,
-          maxOutputTokens: 8000,
+          maxOutputTokens: 4096,
         },
       }),
     }
@@ -232,7 +232,7 @@ async function tryGroq(
         { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
       ],
       temperature: 0.3,
-      max_tokens: 8000,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
     }),
   });
@@ -275,7 +275,7 @@ async function tryDeepSeek(
         { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
       ],
       temperature: 0.3,
-      max_tokens: 8000,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
     }),
   });
