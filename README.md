@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Site Auditor Logo" width="120" />
+</p>
+
 # Site Auditor
 
 AI-powered UX audit tool. Enter any URL, get a scored report with real Lighthouse data, AI persona verdicts, and code-level fixes.
