@@ -28,42 +28,20 @@ export function ScoreCircle({ score, label, color, size = 90, delay = 0 }: Score
   }, [score, delay, progress]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          {/* Background circle */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="4"
-          />
-          {/* Progress circle */}
-          <motion.circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            style={{ strokeDashoffset }}
-          />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5" />
+          <motion.circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"
+            strokeDasharray={circumference} style={{ strokeDashoffset }} />
         </svg>
-        {/* Score text */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.span
-            className="text-xl font-bold"
-            style={{ color }}
-          >
+          <motion.span className="font-bold" style={{ color, fontSize: size > 80 ? "1.5rem" : "1.15rem" }}>
             {displayScore}
           </motion.span>
         </div>
       </div>
-      <span className="text-xs text-muted">{label}</span>
+      <span className="text-[13px] font-medium text-muted">{label}</span>
     </div>
   );
 }

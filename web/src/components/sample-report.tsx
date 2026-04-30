@@ -4,18 +4,18 @@ import { motion } from "motion/react";
 import { ScoreCircle } from "./score-circle";
 
 const sampleIssues = [
-  { severity: "Critical", pillar: "First Impression", issue: "No clear CTA above the fold", persona: "Grandma" },
-  { severity: "High", pillar: "Mobile", issue: "Touch targets under 44px on nav links", persona: "Teen" },
-  { severity: "High", pillar: "Trust", issue: "No testimonials or social proof visible", persona: "Business" },
-  { severity: "Medium", pillar: "Accessibility", issue: "3 images missing alt text", persona: "Screen Reader" },
-  { severity: "Low", pillar: "Copy", issue: "Jargon in secondary nav ('API Docs')", persona: "Grandma" },
+  { severity: "Critical", issue: "No clear CTA above the fold", persona: "Grandma" },
+  { severity: "High", issue: "Touch targets under 44px on nav links", persona: "Teen" },
+  { severity: "High", issue: "No testimonials or social proof visible", persona: "Business" },
+  { severity: "Medium", issue: "3 images missing alt text", persona: "Screen Reader" },
+  { severity: "Low", issue: "Jargon in secondary nav ('API Docs')", persona: "Grandma" },
 ];
 
 const severityColors: Record<string, string> = {
-  Critical: "bg-red-500/10 text-red-400",
-  High: "bg-orange-500/10 text-orange-400",
-  Medium: "bg-yellow-500/10 text-yellow-400",
-  Low: "bg-blue-500/10 text-blue-400",
+  Critical: "bg-red-500/15 text-red-400",
+  High: "bg-orange-500/15 text-orange-400",
+  Medium: "bg-yellow-500/15 text-yellow-400",
+  Low: "bg-blue-500/15 text-blue-400",
 };
 
 const pillarScores = [
@@ -31,64 +31,67 @@ const pillarScores = [
 
 export function SampleReport() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-24">
+    <section className="mx-auto max-w-6xl px-6 py-28">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
+        viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.6 }}
       >
-        <p className="mb-2 text-center text-sm font-medium uppercase tracking-widest text-accent">
+        <p className="mb-3 text-center text-sm font-semibold uppercase tracking-[0.2em] text-accent">
           Sample output
         </p>
-        <h2 className="mb-12 text-center text-3xl font-bold tracking-tight md:text-4xl">
+        <h2 className="mb-4 text-center text-3xl font-bold tracking-tight md:text-5xl">
           What your report looks like
         </h2>
+        <p className="mx-auto mb-14 max-w-xl text-center text-lg text-muted">
+          Interactive, expandable, with code-level fix suggestions.
+        </p>
 
         {/* Report card */}
-        <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+        <div className="rounded-3xl border border-border bg-surface p-8 md:p-10">
           {/* Top: Grade + Lighthouse */}
-          <div className="mb-8 flex flex-col items-center gap-8 md:flex-row md:justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-yellow-500/10 text-4xl font-bold text-yellow-400">
+          <div className="mb-10 flex flex-col items-center gap-8 md:flex-row md:justify-between">
+            <div className="flex items-center gap-8">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-yellow-500/20 bg-yellow-500/10 text-5xl font-bold text-yellow-400">
                 C
               </div>
               <div>
-                <p className="text-2xl font-bold">72<span className="text-lg text-muted">/100</span></p>
-                <p className="text-sm text-muted">example-site.com</p>
+                <p className="text-3xl font-bold">72<span className="text-lg text-muted">/100</span></p>
+                <p className="text-sm text-muted mt-1">example-site.com</p>
               </div>
             </div>
-            <div className="flex gap-6">
-              <ScoreCircle score={91} label="Performance" color="#22c55e" size={64} delay={0} />
-              <ScoreCircle score={78} label="Accessibility" color="#3b82f6" size={64} delay={0.1} />
-              <ScoreCircle score={85} label="Best Practices" color="#22c55e" size={64} delay={0.2} />
-              <ScoreCircle score={92} label="SEO" color="#22c55e" size={64} delay={0.3} />
+            <div className="flex gap-8">
+              <ScoreCircle score={91} label="Performance" color="#22c55e" size={72} delay={0} />
+              <ScoreCircle score={78} label="Accessibility" color="#3b82f6" size={72} delay={0.1} />
+              <ScoreCircle score={85} label="Best Practices" color="#22c55e" size={72} delay={0.2} />
+              <ScoreCircle score={92} label="SEO" color="#22c55e" size={72} delay={0.3} />
             </div>
           </div>
 
           {/* Pillar bars */}
-          <div className="mb-8 grid gap-3 sm:grid-cols-2">
+          <div className="mb-10 grid gap-4 sm:grid-cols-2">
             {pillarScores.map((p, i) => (
               <motion.div
                 key={p.name}
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.3, delay: i * 0.05 }}
-                className="flex items-center gap-3"
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+                className="flex items-center gap-4"
               >
-                <span className="w-36 text-sm text-muted">{p.name}</span>
-                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-white/5">
+                <span className="w-40 text-sm text-muted">{p.name}</span>
+                <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/[0.04]">
                   <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${p.score * 10}%` }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: 0.3 + i * 0.05 }}
+                    transition={{ duration: 0.8, delay: 0.3 + i * 0.06 }}
                     className="absolute inset-y-0 left-0 rounded-full"
                     style={{ backgroundColor: p.color }}
                   />
                 </div>
-                <span className="w-8 text-right text-sm font-mono font-semibold" style={{ color: p.color }}>
+                <span className="w-8 text-right text-sm font-mono font-bold" style={{ color: p.color }}>
                   {p.score}
                 </span>
               </motion.div>
@@ -96,21 +99,17 @@ export function SampleReport() {
           </div>
 
           {/* Issues table */}
-          <div className="rounded-xl border border-border">
-            <div className="border-b border-border px-4 py-3">
-              <h3 className="text-sm font-semibold text-muted">Issues Found</h3>
+          <div className="rounded-2xl border border-border overflow-hidden">
+            <div className="border-b border-border bg-card px-6 py-4">
+              <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Issues Found</h3>
             </div>
             {sampleIssues.map((issue, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 border-b border-border/50 px-4 py-3 last:border-0"
-              >
-                <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${severityColors[issue.severity]}`}>
+              <div key={i} className="flex items-center gap-4 border-b border-border/40 px-6 py-4 last:border-0 transition-colors hover:bg-card-hover">
+                <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${severityColors[issue.severity]}`}>
                   {issue.severity}
                 </span>
-                <span className="flex-1 text-sm">{issue.issue}</span>
-                <span className="hidden text-xs text-muted sm:block">{issue.pillar}</span>
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted">
+                <span className="flex-1 text-[15px]">{issue.issue}</span>
+                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-muted">
                   {issue.persona}
                 </span>
               </div>
