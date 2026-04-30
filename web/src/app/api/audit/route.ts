@@ -117,10 +117,10 @@ export async function POST(req: NextRequest) {
   };
   audits.set(id, record);
 
-  // Fire pipeline in background — client polls GET for status
-  runAuditPipeline(record).catch(err => console.error("Pipeline error:", err));
+  // Run pipeline synchronously — Vercel kills background tasks
+  await runAuditPipeline(record);
 
-  return NextResponse.json({ id, url, status: "queued" });
+  return NextResponse.json(record);
 }
 
 // GET — Poll audit status (in-memory first, then Supabase fallback)
