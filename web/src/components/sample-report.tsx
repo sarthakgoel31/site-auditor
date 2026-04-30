@@ -49,7 +49,7 @@ export function SampleReport() {
         </p>
 
         {/* Report card */}
-        <div className="rounded-3xl border border-border bg-surface p-8 md:p-10">
+        <div className="rounded-3xl glass-surface p-8 md:p-10">
           {/* Top: Grade + Lighthouse */}
           <div className="mb-10 flex flex-col items-center gap-8 md:flex-row md:justify-between">
             <div className="flex items-center gap-8">
@@ -99,12 +99,12 @@ export function SampleReport() {
           </div>
 
           {/* Issues table */}
-          <div className="rounded-2xl border border-border overflow-hidden">
-            <div className="border-b border-border bg-card px-6 py-4">
+          <div className="rounded-2xl glass-card overflow-hidden">
+            <div className="border-b border-glass-border bg-white/[0.02] px-6 py-4">
               <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Issues Found</h3>
             </div>
             {sampleIssues.map((issue, i) => (
-              <div key={i} className="flex items-center gap-4 border-b border-border/40 px-6 py-4 last:border-0 transition-colors hover:bg-card-hover">
+              <div key={i} className="flex items-center gap-4 border-b border-glass-border/40 px-6 py-4 last:border-0 transition-colors hover:bg-white/[0.03]">
                 <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${severityColors[issue.severity]}`}>
                   {issue.severity}
                 </span>

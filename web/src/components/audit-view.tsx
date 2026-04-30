@@ -67,9 +67,9 @@ function Section({ title, count, children, defaultOpen = false }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="mb-8 rounded-2xl border border-border bg-surface overflow-hidden">
+    <div className="mb-8 rounded-2xl glass-surface overflow-hidden">
       <button onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-7 py-5 text-left transition-colors hover:bg-card-hover">
+        className="flex w-full items-center justify-between px-7 py-5 text-left transition-colors hover:bg-white/[0.03]">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold">{title}</h2>
           {count !== undefined && (
@@ -81,7 +81,7 @@ function Section({ title, count, children, defaultOpen = false }: {
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-            <div className="border-t border-border px-7 py-6">{children}</div>
+            <div className="border-t border-glass-border px-7 py-6">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -204,7 +204,7 @@ export function AuditView({ id }: { id: string }) {
               { label: "Size", value: audit.metrics.pageWeight, good: parseFloat(audit.metrics.pageWeight) < 2 },
               { label: "Requests", value: String(audit.metrics.requests), good: audit.metrics.requests < 40 },
             ].map((m) => (
-              <div key={m.label} className="rounded-xl border border-border bg-surface p-4 text-center">
+              <div key={m.label} className="rounded-xl glass-card p-4 text-center">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wider">{m.label}</p>
                 <p className={`mt-1 text-xl font-bold font-mono ${m.good ? "text-emerald-400" : "text-orange-400"}`}>{m.value}</p>
               </div>
@@ -241,7 +241,7 @@ export function AuditView({ id }: { id: string }) {
               {audit.pillars.map((p, i) => (
                 <div key={p.name}>
                   <button onClick={() => setExpandedPillar(expandedPillar === i ? null : i)}
-                    className="flex w-full items-center gap-4 rounded-xl px-4 py-3.5 transition-colors hover:bg-card-hover">
+                    className="flex w-full items-center gap-4 rounded-xl px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
                     <span className="text-2xl">{p.icon}</span>
                     <span className="w-40 text-left text-[15px] font-medium">{p.name}</span>
                     <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/[0.04]">
@@ -256,7 +256,7 @@ export function AuditView({ id }: { id: string }) {
                   <AnimatePresence>
                     {expandedPillar === i && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                        <div className="ml-14 mr-4 mb-3 mt-1 rounded-xl border border-border bg-card p-5">
+                        <div className="ml-14 mr-4 mb-3 mt-1 rounded-xl glass-card p-5">
                           <p className="mb-5 text-[15px] text-muted leading-relaxed">{p.summary}</p>
                           <div className="space-y-3">
                             {p.checks.map((c, ci) => (
@@ -286,9 +286,9 @@ export function AuditView({ id }: { id: string }) {
           <Section title="Persona Verdicts" count={4} defaultOpen={true}>
             <div className="grid gap-4 sm:grid-cols-2">
               {audit.personas.map((p, i) => (
-                <div key={p.name} className="rounded-xl border border-border bg-card overflow-hidden">
+                <div key={p.name} className="rounded-xl glass-card overflow-hidden">
                   <button onClick={() => setExpandedPersona(expandedPersona === i ? null : i)}
-                    className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-card-hover">
+                    className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
                     <span className="text-4xl">{p.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -305,7 +305,7 @@ export function AuditView({ id }: { id: string }) {
                   <AnimatePresence>
                     {expandedPersona === i && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                        <div className="border-t border-border px-5 pb-5 pt-4">
+                        <div className="border-t border-glass-border px-5 pb-5 pt-4">
                           <p className="mb-4 text-[15px] italic text-muted leading-relaxed">&ldquo;{p.verdict}&rdquo;</p>
                           <p className="mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Pain Points</p>
                           <ul className="space-y-2">
@@ -342,9 +342,9 @@ export function AuditView({ id }: { id: string }) {
             </div>
             <div className="space-y-3">
               {filteredIssues.map((issue, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+                <div key={i} className="rounded-xl glass-card overflow-hidden">
                   <button onClick={() => setExpandedIssue(expandedIssue === i ? null : i)}
-                    className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-card-hover">
+                    className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
                     <span className={`mt-0.5 shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold ${sevColors[issue.severity]}`}>
                       {issue.severity}
                     </span>
@@ -367,7 +367,7 @@ export function AuditView({ id }: { id: string }) {
                   <AnimatePresence>
                     {expandedIssue === i && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                        <div className="border-t border-border px-5 pb-5 pt-4 space-y-4">
+                        <div className="border-t border-glass-border px-5 pb-5 pt-4 space-y-4">
                           <div>
                             <p className="text-xs font-bold text-emerald-400 uppercase tracking-[0.15em] mb-2">How to fix</p>
                             <p className="text-[15px] text-muted leading-relaxed">{issue.fix}</p>

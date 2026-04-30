@@ -117,7 +117,7 @@ export function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.06 }}
-              className="flex items-center gap-4 rounded-xl border border-border bg-surface px-5 py-4 transition-all duration-300 hover:border-accent/30 hover:bg-card-hover"
+              className="flex items-center gap-4 rounded-xl glass-card px-5 py-4 transition-all duration-300 hover:border-accent/20"
             >
               <span className="text-2xl">{p.icon}</span>
               <div className="flex-1">

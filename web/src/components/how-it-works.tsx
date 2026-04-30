@@ -62,7 +62,7 @@ export function HowItWorks() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="flex items-start gap-7 rounded-2xl border border-border bg-surface p-7 transition-all duration-300 hover:border-accent/20"
+              className="flex items-start gap-7 rounded-2xl glass-card p-7 transition-all duration-300 hover:border-accent/20"
             >
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                 {step.icon}
