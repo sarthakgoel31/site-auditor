@@ -229,7 +229,9 @@ async function runAuditPipeline(record: AuditRecord) {
       record.quickWins = analysis.quickWins;
       record.llmUsed = analysis.llmUsed || "Gemini Flash";
     } catch (err) {
-      console.error("Gemini analysis failed, using fallback:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("All LLM analysis failed:", errMsg);
+      record.llmUsed = `Error: ${errMsg.slice(0, 200)}`;
       // Minimal fallback
       const mPerf = record.mobile.lighthouse.performance;
       const mA11y = record.mobile.lighthouse.accessibility;

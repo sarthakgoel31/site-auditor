@@ -211,7 +211,7 @@ async function tryGroq(
   lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
 ): Promise<GeminiAnalysis> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY not set");
+  if (!apiKey) throw new Error("GROQ_API_KEY not set — add it in Vercel env vars");
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -298,20 +298,34 @@ export async function analyzeWithGemini(
   lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
   lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
 ): Promise<GeminiAnalysis> {
+  const errors: string[] = [];
+
   // Try Groq first (fast, reliable, free)
   try {
     return await tryGroq(url, lighthouseDesktop, lighthouseMobile);
   } catch (err) {
-    console.warn("Groq failed, trying Gemini:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`Groq: ${msg}`);
+    console.error("Groq failed:", msg);
   }
 
   // Try Gemini (supports screenshots but quota-limited)
   try {
     return await tryGemini(url, desktopScreenshot, mobileScreenshot, lighthouseDesktop, lighthouseMobile);
   } catch (err) {
-    console.warn("Gemini failed, trying DeepSeek:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`Gemini: ${msg}`);
+    console.error("Gemini failed:", msg);
   }
 
   // Try DeepSeek (last resort)
-  return await tryDeepSeek(url, lighthouseDesktop, lighthouseMobile);
+  try {
+    return await tryDeepSeek(url, lighthouseDesktop, lighthouseMobile);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`DeepSeek: ${msg}`);
+    console.error("DeepSeek failed:", msg);
+  }
+
+  throw new Error(`All LLMs failed: ${errors.join(" | ")}`);
 }
