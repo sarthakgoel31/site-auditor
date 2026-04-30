@@ -117,14 +117,16 @@ export async function POST(req: NextRequest) {
   };
   audits.set(id, record);
 
-  // Save initial record to Supabase immediately so GET can find it
-  try {
-    const { saveAudit } = await import("@/lib/supabase");
-    await saveAudit(record.id, record.url, record as unknown as Record<string, unknown>);
-  } catch { /* Supabase save failed, in-memory fallback */ }
+  // Save queued state to Supabase
+  await saveProgress(record);
 
-  // Run pipeline — save progress to Supabase at each step
-  runAuditPipeline(record).catch(err => console.error("Pipeline error:", err));
+  // Run pipeline — fire and forget but save progress to Supabase at each step
+  runAuditPipeline(record).catch(err => {
+    console.error("Pipeline error:", err);
+    record.status = "error";
+    record.error = err instanceof Error ? err.message : "Unknown error";
+    saveProgress(record);
+  });
 
   return NextResponse.json({ id, url, status: "queued" });
 }
@@ -171,21 +173,21 @@ async function runAuditPipeline(record: AuditRecord) {
     const { runPageSpeed } = await import("@/lib/pagespeed");
     const toGrade = (s: number) => s >= 90 ? "A" : s >= 80 ? "B" : s >= 70 ? "C" : s >= 60 ? "D" : "F";
 
-    // Step 1: Run PageSpeed for both desktop and mobile in parallel
+    // Step 1: Run PageSpeed — desktop first, then mobile, save after each
     record.status = "scanning";
     await saveProgress(record);
 
-    let desktopResult, mobileResult;
+    let desktopResult = null, mobileResult = null;
     try {
-      [desktopResult, mobileResult] = await Promise.all([
-        runPageSpeed(record.url, "desktop"),
-        runPageSpeed(record.url, "mobile"),
-      ]);
+      desktopResult = await runPageSpeed(record.url, "desktop");
     } catch (err) {
-      console.error("PageSpeed API failed, falling back to mock:", err);
-      // Fallback to mock if PageSpeed fails
-      desktopResult = null;
-      mobileResult = null;
+      console.error("PageSpeed desktop failed:", err);
+    }
+
+    try {
+      mobileResult = await runPageSpeed(record.url, "mobile");
+    } catch (err) {
+      console.error("PageSpeed mobile failed:", err);
     }
 
     // Step 2: AI Analysis
