@@ -2,7 +2,7 @@
 
 AI-powered UX audit tool. Enter any URL, get a scored report with real Lighthouse data, AI persona verdicts, and code-level fixes.
 
-**Live:** https://web-ten-amber-60.vercel.app
+**Live:** https://audit.sarthakgoel.cv/
 
 ## Why
 
