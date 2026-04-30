@@ -298,18 +298,18 @@ export async function analyzeWithGemini(
   lighthouseDesktop: { performance: number; accessibility: number; bestPractices: number; seo: number },
   lighthouseMobile: { performance: number; accessibility: number; bestPractices: number; seo: number },
 ): Promise<GeminiAnalysis> {
-  // Try Gemini first (supports screenshots)
-  try {
-    return await tryGemini(url, desktopScreenshot, mobileScreenshot, lighthouseDesktop, lighthouseMobile);
-  } catch (err) {
-    console.warn("Gemini failed, trying Groq:", err instanceof Error ? err.message : err);
-  }
-
-  // Try Groq (no screenshots, but fast)
+  // Try Groq first (fast, reliable, free)
   try {
     return await tryGroq(url, lighthouseDesktop, lighthouseMobile);
   } catch (err) {
-    console.warn("Groq failed, trying DeepSeek:", err instanceof Error ? err.message : err);
+    console.warn("Groq failed, trying Gemini:", err instanceof Error ? err.message : err);
+  }
+
+  // Try Gemini (supports screenshots but quota-limited)
+  try {
+    return await tryGemini(url, desktopScreenshot, mobileScreenshot, lighthouseDesktop, lighthouseMobile);
+  } catch (err) {
+    console.warn("Gemini failed, trying DeepSeek:", err instanceof Error ? err.message : err);
   }
 
   // Try DeepSeek (last resort)
