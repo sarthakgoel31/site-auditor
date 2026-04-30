@@ -188,9 +188,10 @@ export function AuditView({ id }: { id: string }) {
         <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-accent/[0.04] blur-[150px]" />
         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 2, repeat: Infinity }}
           className="pulse-glow flex h-28 w-28 items-center justify-center rounded-3xl border border-accent/25 bg-surface">
-          <svg className="h-12 w-12 text-accent animate-spin" style={{ animationDuration: "3s" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <motion.svg animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="h-12 w-12 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
+          </motion.svg>
         </motion.div>
         <div className="text-center">
           <h1 className="mb-3 text-3xl font-bold">Auditing {audit.url}</h1>
