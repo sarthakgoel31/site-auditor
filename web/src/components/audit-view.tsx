@@ -207,7 +207,7 @@ export function AuditView({ id }: { id: string }) {
   /* ─── Progress ─── */
   if (audit.status !== "complete") {
     const cur = scanSteps.findIndex((s) => s.key === audit.status);
-    const estTotal = 55;
+    const estTotal = 70;
     const pct = Math.min(Math.round((elapsed / estTotal) * 100), 95);
     const remaining = Math.max(estTotal - elapsed, 1);
     return (
