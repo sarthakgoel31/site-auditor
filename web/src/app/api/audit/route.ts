@@ -46,6 +46,31 @@ interface DeviceAudit {
   grade: string;
 }
 
+interface SeoCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+interface SeoAudit {
+  score: number;
+  summary: string;
+  checks: SeoCheck[];
+}
+
+interface SecurityCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+  severity: "critical" | "high" | "medium" | "low";
+}
+
+interface SecurityAudit {
+  score: number;
+  summary: string;
+  checks: SecurityCheck[];
+}
+
 interface AuditRecord {
   id: string;
   url: string;
@@ -59,6 +84,8 @@ interface AuditRecord {
   issues?: Issue[];
   personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
+  seoAudit?: SeoAudit;
+  securityAudit?: SecurityAudit;
   llmUsed?: string;
   error?: string;
 }
@@ -225,6 +252,8 @@ async function runAuditPipeline(record: AuditRecord) {
       record.issues = analysis.issues;
       record.personas = analysis.personas;
       record.quickWins = analysis.quickWins;
+      record.seoAudit = analysis.seoAudit;
+      record.securityAudit = analysis.securityAudit;
       record.llmUsed = analysis.llmUsed || "Gemini Flash";
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);

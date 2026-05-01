@@ -18,6 +18,18 @@ interface PersonaVerdict {
   painPoints: string[]; wouldReturn: boolean;
   score?: number; struggles?: string[]; fixes?: string[];
 }
+interface SeoCheck {
+  label: string; passed: boolean; detail: string;
+}
+interface SeoAudit {
+  score: number; summary: string; checks: SeoCheck[];
+}
+interface SecurityCheck {
+  label: string; passed: boolean; detail: string; severity: "critical" | "high" | "medium" | "low";
+}
+interface SecurityAudit {
+  score: number; summary: string; checks: SecurityCheck[];
+}
 interface DeviceAudit {
   lighthouse: { performance: number; accessibility: number; bestPractices: number; seo: number };
   metrics: { lcp: string; cls: string; fid: string; ttfb: string; pageWeight: string; requests: number };
@@ -31,6 +43,8 @@ interface AuditResult {
   desktop?: DeviceAudit; mobile?: DeviceAudit;
   pillars?: PillarDetail[]; issues?: Issue[]; personas?: PersonaVerdict[];
   quickWins?: { title: string; impact: string; effort: string; description: string }[];
+  seoAudit?: SeoAudit;
+  securityAudit?: SecurityAudit;
   llmUsed?: string;
   createdAt?: number;
   error?: string;
@@ -40,7 +54,7 @@ interface AuditResult {
 const scanSteps = [
   { key: "queued", label: "Queued", detail: "Waiting to start..." },
   { key: "scanning", label: "Scanning", detail: "Taking screenshots at 3 viewports + running Lighthouse..." },
-  { key: "analyzing", label: "Analyzing", detail: "AI evaluating from 4 persona perspectives across 8 UX pillars..." },
+  { key: "analyzing", label: "Analyzing", detail: "AI evaluating 8 UX pillars, SEO, Security, and 4 personas..." },
   { key: "complete", label: "Complete", detail: "Your report is ready." },
 ];
 
@@ -382,6 +396,91 @@ export function AuditView({ id }: { id: string }) {
                   </AnimatePresence>
                 </div>
               ))}
+            </div>
+          </Section>
+        )}
+
+        {/* ── SEO AUDIT ── */}
+        {audit.seoAudit && (
+          <Section title="SEO Audit" count={audit.seoAudit.checks.length} defaultOpen={true}>
+            <div className="mb-5 flex items-center gap-5">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${
+                  audit.seoAudit.score >= 7 ? "border-emerald-500/25 bg-emerald-500/10" : audit.seoAudit.score >= 4 ? "border-amber-500/25 bg-amber-500/10" : "border-red-500/25 bg-red-500/10"
+                } text-2xl`}>
+                  🔍
+                </div>
+                <div>
+                  <p className={`text-2xl font-bold font-mono ${
+                    audit.seoAudit.score >= 7 ? "text-emerald-400" : audit.seoAudit.score >= 4 ? "text-amber-400" : "text-red-400"
+                  }`}>{audit.seoAudit.score}<span className="text-base text-muted">/10</span></p>
+                  <p className="text-sm text-muted">SEO Score</p>
+                </div>
+              </div>
+            </div>
+            <p className="mb-5 text-[15px] text-muted leading-relaxed">{audit.seoAudit.summary}</p>
+            <div className="space-y-3">
+              {audit.seoAudit.checks.map((c, i) => (
+                <div key={i} className="flex items-start gap-3 rounded-xl glass-card p-4">
+                  <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${c.passed ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                    {c.passed ? "✓" : "✕"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-[15px] font-medium ${c.passed ? "" : "text-red-400"}`}>{c.label}</p>
+                    <p className="mt-0.5 text-sm text-muted">{c.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* ── SECURITY AUDIT ── */}
+        {audit.securityAudit && (
+          <Section title="Security Audit" count={audit.securityAudit.checks.length} defaultOpen={true}>
+            <div className="mb-5 flex items-center gap-5">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${
+                  audit.securityAudit.score >= 7 ? "border-emerald-500/25 bg-emerald-500/10" : audit.securityAudit.score >= 4 ? "border-amber-500/25 bg-amber-500/10" : "border-red-500/25 bg-red-500/10"
+                } text-2xl`}>
+                  🛡
+                </div>
+                <div>
+                  <p className={`text-2xl font-bold font-mono ${
+                    audit.securityAudit.score >= 7 ? "text-emerald-400" : audit.securityAudit.score >= 4 ? "text-amber-400" : "text-red-400"
+                  }`}>{audit.securityAudit.score}<span className="text-base text-muted">/10</span></p>
+                  <p className="text-sm text-muted">Security Score</p>
+                </div>
+              </div>
+            </div>
+            <p className="mb-5 text-[15px] text-muted leading-relaxed">{audit.securityAudit.summary}</p>
+            <div className="space-y-3">
+              {audit.securityAudit.checks.map((c, i) => {
+                const sevStyle: Record<string, string> = {
+                  critical: "bg-red-500/10 text-red-400 border-red-500/20",
+                  high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+                  medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+                  low: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                };
+                return (
+                  <div key={i} className="flex items-start gap-3 rounded-xl glass-card p-4">
+                    <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${c.passed ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                      {c.passed ? "✓" : "✕"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className={`text-[15px] font-medium ${c.passed ? "" : "text-red-400"}`}>{c.label}</p>
+                        {!c.passed && (
+                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase ${sevStyle[c.severity] || sevStyle.medium}`}>
+                            {c.severity}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-sm text-muted">{c.detail}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Section>
         )}

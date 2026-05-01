@@ -37,11 +37,38 @@ interface PersonaVerdict {
   fixes: string[];
 }
 
+interface SeoCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+interface SeoAudit {
+  score: number;
+  summary: string;
+  checks: SeoCheck[];
+}
+
+interface SecurityCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+  severity: "critical" | "high" | "medium" | "low";
+}
+
+interface SecurityAudit {
+  score: number;
+  summary: string;
+  checks: SecurityCheck[];
+}
+
 export interface GeminiAnalysis {
   pillars: PillarDetail[];
   issues: Issue[];
   personas: PersonaVerdict[];
   quickWins: { title: string; impact: string; effort: string; description: string }[];
+  seoAudit?: SeoAudit;
+  securityAudit?: SecurityAudit;
   llmUsed?: string;
 }
 
@@ -63,6 +90,26 @@ You score 8 UX pillars (each 0-10):
 7. Accessibility (10%) — Contrast ≥4.5:1? Alt text? Keyboard nav? ARIA labels?
 8. Copy & Clarity (10%) — No jargon? Appropriate reading level? Helpful errors?
 
+You also perform an SEO audit checking:
+- Meta title (exists, 50-60 chars) and meta description (exists, 150-160 chars)
+- Structured data (JSON-LD presence)
+- Sitemap.xml accessibility
+- Robots.txt accessibility
+- Canonical URL tag
+- Open Graph tags (og:title, og:description, og:image)
+- Heading hierarchy (single H1, logical H2-H6 nesting)
+- Image alt text coverage
+
+You also perform a Security audit checking:
+- HTTPS enforcement (no mixed content)
+- Content-Security-Policy header
+- X-Frame-Options header
+- Strict-Transport-Security (HSTS) header
+- X-Content-Type-Options header
+- Cookie flags (HttpOnly, Secure, SameSite) — infer from best practices if not directly visible
+- Mixed content (HTTP resources on HTTPS page)
+- Referrer-Policy header
+
 Respond ONLY with valid JSON matching this exact structure (no markdown, no explanation):
 {
   "pillars": [
@@ -81,6 +128,35 @@ Respond ONLY with valid JSON matching this exact structure (no markdown, no expl
     }
     // ... all 8 pillars with 4 checks each
   ],
+  "seoAudit": {
+    "score": 7,
+    "summary": "Overall SEO health summary...",
+    "checks": [
+      {"label": "Meta title", "passed": true, "detail": "Title tag exists and is 55 chars..."},
+      {"label": "Meta description", "passed": false, "detail": "Missing meta description tag..."},
+      {"label": "Structured data (JSON-LD)", "passed": true, "detail": "Found Organization schema..."},
+      {"label": "Sitemap.xml", "passed": true, "detail": "Sitemap accessible at /sitemap.xml..."},
+      {"label": "Robots.txt", "passed": true, "detail": "Robots.txt accessible..."},
+      {"label": "Canonical URL", "passed": false, "detail": "No canonical tag found..."},
+      {"label": "Open Graph tags", "passed": true, "detail": "og:title, og:description, og:image present..."},
+      {"label": "Heading hierarchy", "passed": true, "detail": "Single H1, logical nesting..."},
+      {"label": "Image alt text", "passed": false, "detail": "12 of 20 images missing alt text..."}
+    ]
+  },
+  "securityAudit": {
+    "score": 5,
+    "summary": "Overall security posture summary...",
+    "checks": [
+      {"label": "HTTPS enforcement", "passed": true, "detail": "Site served over HTTPS...", "severity": "critical"},
+      {"label": "Content-Security-Policy", "passed": false, "detail": "No CSP header found...", "severity": "high"},
+      {"label": "X-Frame-Options", "passed": false, "detail": "Missing X-Frame-Options header...", "severity": "high"},
+      {"label": "Strict-Transport-Security", "passed": false, "detail": "No HSTS header...", "severity": "high"},
+      {"label": "X-Content-Type-Options", "passed": true, "detail": "nosniff header present...", "severity": "medium"},
+      {"label": "Cookie security flags", "passed": true, "detail": "Cookies use HttpOnly and Secure flags...", "severity": "medium"},
+      {"label": "Mixed content", "passed": true, "detail": "No HTTP resources on HTTPS page...", "severity": "critical"},
+      {"label": "Referrer-Policy", "passed": false, "detail": "No Referrer-Policy header...", "severity": "low"}
+    ]
+  },
   "issues": [
     {
       "severity": "Critical|High|Medium|Low",
@@ -122,12 +198,15 @@ Respond ONLY with valid JSON matching this exact structure (no markdown, no expl
 
 IMPORTANT:
 - Always provide exactly 8 pillars with exactly 4 checks each
-- Provide 5-12 issues sorted by severity (Critical first)
+- Always provide seoAudit with exactly 9 checks and a score (0-10)
+- Always provide securityAudit with exactly 8 checks (each with severity) and a score (0-10)
+- Provide 5-12 issues sorted by severity (Critical first) — include SEO and Security issues too
 - Provide exactly 4 persona verdicts
 - Provide exactly 3 quick wins
 - Include codeBefore/codeAfter for at least 3 issues
 - Be specific and actionable, not generic
-- Use the Lighthouse scores provided to inform your Performance and Accessibility pillar scores`;
+- Use the Lighthouse scores provided to inform your Performance and Accessibility pillar scores
+- Use the Lighthouse SEO score to inform the seoAudit score`;
 
 function buildUserPrompt(
   url: string,
@@ -188,7 +267,7 @@ async function tryGemini(
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 6144,
         },
       }),
     }
@@ -235,7 +314,7 @@ async function tryGroq(
         { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
       ],
       temperature: 0.3,
-      max_tokens: 4096,
+      max_tokens: 6144,
       response_format: { type: "json_object" },
     }),
   });
@@ -279,7 +358,7 @@ async function tryDeepSeek(
         { role: "user", content: buildUserPrompt(url, lighthouseDesktop, lighthouseMobile, false, false) },
       ],
       temperature: 0.3,
-      max_tokens: 4096,
+      max_tokens: 6144,
       response_format: { type: "json_object" },
     }),
   });
