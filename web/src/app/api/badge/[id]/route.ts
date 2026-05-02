@@ -7,21 +7,31 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // Try loading from Supabase
   let grade = "?";
   let score = 0;
-  let url = "";
 
+  // Try Supabase first
   try {
     const { loadAudit } = await import("@/lib/supabase");
     const stored = await loadAudit(id);
     if (stored?.data) {
-      const data = stored.data as { grade?: string; score?: number; url?: string };
-      grade = data.grade || "?";
-      score = data.score || 0;
-      url = data.url || "";
+      const d = typeof stored.data === "string" ? JSON.parse(stored.data) : stored.data;
+      grade = d.grade || stored.grade || "?";
+      score = d.score || stored.score || 0;
     }
   } catch { /* fallback */ }
+
+  // Fallback: try Hetzner API
+  if (grade === "?") {
+    try {
+      const res = await fetch(`http://5.75.129.53:3100/api/audit?id=${id}`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const d = await res.json();
+        grade = d.grade || "?";
+        score = d.score || 0;
+      }
+    } catch { /* best effort */ }
+  }
 
   const gradeColor = grade === "A" ? "#22c55e" : grade === "B" ? "#3b82f6" : grade === "C" ? "#eab308" : grade === "D" ? "#f97316" : grade === "F" ? "#ef4444" : "#6b7280";
 

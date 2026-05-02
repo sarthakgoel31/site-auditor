@@ -36,6 +36,12 @@ interface DeviceAudit {
   score: number;
   grade: string;
 }
+interface StepInfo {
+  key: string; label: string; detail: string;
+  status: "pending" | "running" | "done" | "error";
+  startedAt?: number; completedAt?: number;
+}
+interface LogEntry { t: string; msg: string; }
 interface AuditResult {
   id: string; url: string;
   status: "queued" | "scanning" | "analyzing" | "complete" | "error";
@@ -48,16 +54,11 @@ interface AuditResult {
   llmUsed?: string;
   createdAt?: number;
   error?: string;
+  steps?: StepInfo[];
+  logs?: LogEntry[];
 }
 
 /* ─── Constants ─── */
-const scanSteps = [
-  { key: "queued", label: "Queued", detail: "Waiting to start..." },
-  { key: "scanning", label: "Scanning", detail: "Taking screenshots at 3 viewports + running Lighthouse..." },
-  { key: "analyzing", label: "Analyzing", detail: "AI evaluating 8 UX pillars, SEO, Security, and 4 personas..." },
-  { key: "complete", label: "Complete", detail: "Your report is ready." },
-];
-
 const sevColors: Record<string, string> = {
   Critical: "bg-red-500/15 text-red-400 border-red-500/20",
   High: "bg-orange-500/15 text-orange-400 border-orange-500/20",
@@ -206,48 +207,118 @@ export function AuditView({ id }: { id: string }) {
 
   /* ─── Progress ─── */
   if (audit.status !== "complete") {
-    const cur = scanSteps.findIndex((s) => s.key === audit.status);
-    const estTotal = 70;
-    const pct = Math.min(Math.round((elapsed / estTotal) * 100), 95);
+    const steps = audit.steps || [];
+    const logs = audit.logs || [];
+    const doneCount = steps.filter(s => s.status === "done").length;
+    const estTotal = 90;
+    const pct = steps.length > 0
+      ? Math.min(Math.round((doneCount / steps.length) * 90) + (steps.some(s => s.status === "running") ? 5 : 0), 95)
+      : Math.min(Math.round((elapsed / estTotal) * 100), 95);
     const remaining = Math.max(estTotal - elapsed, 1);
+
+    const stepIcons: Record<string, string> = {
+      pagespeed_desktop: "🖥",
+      pagespeed_mobile: "📱",
+      ux_pillars: "🎨",
+      seo_audit: "🔍",
+      security_audit: "🛡",
+      saving: "💾",
+    };
+
     return (
-      <div className="grid-bg flex min-h-screen flex-col items-center justify-center gap-10 px-6">
+      <div className="grid-bg flex min-h-screen flex-col items-center justify-center gap-8 px-6">
         <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-accent/[0.04] blur-[150px]" />
         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 2, repeat: Infinity }}
-          className="pulse-glow flex h-28 w-28 items-center justify-center rounded-3xl border border-accent/25 bg-surface">
+          className="pulse-glow flex h-24 w-24 items-center justify-center rounded-3xl border border-accent/25 bg-surface">
           <motion.svg animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="h-12 w-12 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            className="h-10 w-10 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </motion.svg>
         </motion.div>
+
         <div className="text-center">
-          <h1 className="mb-3 text-3xl font-bold">Auditing {audit.url}</h1>
-          <p className="text-lg text-muted">{scanSteps[cur]?.detail}</p>
-          <p className="mt-2 text-sm text-muted">~{remaining}s remaining</p>
-          <div className="mt-4 mx-auto w-64 h-1.5 rounded-full bg-white/5 overflow-hidden">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl">Auditing {audit.url}</h1>
+          <p className="text-sm text-muted">~{remaining}s remaining &middot; {elapsed}s elapsed</p>
+          <div className="mt-3 mx-auto w-72 h-1.5 rounded-full bg-white/5 overflow-hidden">
             <motion.div className="h-full rounded-full bg-accent" animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }} />
           </div>
-          <p className="mt-1.5 text-xs text-muted">{elapsed}s elapsed</p>
         </div>
-        <div className="flex gap-5">
-          {scanSteps.slice(0, -1).map((step, i) => (
-            <div key={step.key} className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all duration-500 ${i < cur ? "bg-emerald-500 text-white" : i === cur ? "bg-accent text-white animate-pulse" : "bg-white/5 text-muted"}`}>
-                {i < cur ? "✓" : i + 1}
+
+        {/* Granular steps */}
+        <div className="w-full max-w-md space-y-2">
+          {steps.map((step) => (
+            <motion.div key={step.key}
+              initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+              className={`flex items-center gap-4 rounded-xl px-5 py-3.5 transition-all ${
+                step.status === "running" ? "glass-surface border border-accent/20" :
+                step.status === "done" ? "bg-emerald-500/[0.04]" :
+                step.status === "error" ? "bg-red-500/[0.04]" :
+                "bg-white/[0.02]"
+              }`}
+            >
+              {/* Icon */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                step.status === "done" ? "bg-emerald-500/15 text-emerald-400" :
+                step.status === "running" ? "bg-accent/15 text-accent animate-pulse" :
+                step.status === "error" ? "bg-red-500/15 text-red-400" :
+                "bg-white/5 text-muted"
+              }`}>
+                {step.status === "done" ? "✓" :
+                 step.status === "error" ? "✕" :
+                 step.status === "running" ? (
+                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                 ) : stepIcons[step.key] || "·"}
               </div>
-              <span className={`hidden text-[15px] sm:block ${i <= cur ? "text-foreground font-medium" : "text-muted"}`}>{step.label}</span>
-              {i < scanSteps.length - 2 && <div className={`mx-3 h-px w-10 ${i < cur ? "bg-emerald-500" : "bg-white/10"}`} />}
-            </div>
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-[15px] font-medium ${
+                  step.status === "done" ? "text-emerald-400" :
+                  step.status === "running" ? "text-foreground" :
+                  step.status === "error" ? "text-red-400" :
+                  "text-muted"
+                }`}>{step.label}</p>
+                <p className="text-xs text-muted truncate">{step.detail}</p>
+              </div>
+              {/* Duration */}
+              {step.status === "done" && step.startedAt && step.completedAt && (
+                <span className="text-xs font-mono text-emerald-400/70">
+                  {((step.completedAt - step.startedAt) / 1000).toFixed(1)}s
+                </span>
+              )}
+              {step.status === "running" && step.startedAt && (
+                <span className="text-xs font-mono text-accent/70">
+                  {((Date.now() - step.startedAt) / 1000).toFixed(0)}s
+                </span>
+              )}
+            </motion.div>
           ))}
         </div>
+
+        {/* Live logs (collapsible) */}
+        {logs.length > 0 && (
+          <details className="w-full max-w-md">
+            <summary className="cursor-pointer text-xs text-muted hover:text-foreground transition-colors select-none">
+              Show live logs ({logs.length})
+            </summary>
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-xl bg-black/30 border border-white/5 p-3 font-mono text-[11px] leading-relaxed text-muted">
+              {logs.map((log, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="shrink-0 text-accent/50">[{log.t}s]</span>
+                  <span>{log.msg}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     );
   }
 
   /* ─── COMPLETE REPORT ─── */
-  const filteredIssues = audit.issues?.filter((iss) => issueFilter === "all" || iss.severity === issueFilter) || [];
+  const normSev = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  const filteredIssues = audit.issues?.filter((iss) => issueFilter === "all" || normSev(iss.severity) === issueFilter) || [];
   const issueCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
-  audit.issues?.forEach((i) => { if (i.severity in issueCounts) issueCounts[i.severity as keyof typeof issueCounts]++; });
+  audit.issues?.forEach((i) => { const k = normSev(i.severity); if (k in issueCounts) issueCounts[k as keyof typeof issueCounts]++; });
   const gc = gradeColors[audit.grade || "C"];
 
   return (
@@ -329,6 +400,88 @@ export function AuditView({ id }: { id: string }) {
               {deviceTab === "mobile" && audit.mobile && <DevicePanel device={audit.mobile} label="Mobile" />}
             </div>
           </motion.div>
+        )}
+
+        {/* ── PERSONAS ── */}
+        {audit.personas && (
+          <Section title="Persona Verdicts" count={4} defaultOpen={true}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {audit.personas.map((p, i) => (
+                <div key={p.name} className="rounded-xl glass-card overflow-hidden">
+                  <button onClick={() => setExpandedPersona(expandedPersona === i ? null : i)}
+                    className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
+                    <span className="text-4xl">{{ "Grandma": "👵", "Teen": "🧑‍💻", "Business User": "👔", "Screen Reader": "♿" }[p.name] || p.emoji || "👤"}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-[15px] font-bold">{p.name}</h3>
+                        {p.age !== "--" && <span className="text-xs text-muted">Age {p.age}</span>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted">Tech: {p.techLevel}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${p.wouldReturn ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                      {p.wouldReturn ? "Would return" : "Would leave"}
+                    </span>
+                    <Chevron open={expandedPersona === i} />
+                  </button>
+                  <AnimatePresence>
+                    {expandedPersona === i && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                        <div className="border-t border-glass-border px-5 pb-5 pt-4">
+                          {p.score != null && (
+                            <div className="mb-4 flex items-center gap-3">
+                              <span className="text-xs font-bold text-muted uppercase tracking-[0.15em]">Score</span>
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-24 rounded-full bg-glass-border overflow-hidden">
+                                  <div className={`h-full rounded-full ${p.score >= 7 ? "bg-emerald-500" : p.score >= 4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${p.score * 10}%` }} />
+                                </div>
+                                <span className={`text-sm font-bold ${p.score >= 7 ? "text-emerald-400" : p.score >= 4 ? "text-amber-400" : "text-red-400"}`}>{p.score}/10</span>
+                              </div>
+                            </div>
+                          )}
+                          <p className="mb-4 text-[15px] italic text-muted leading-relaxed">&ldquo;{p.verdict}&rdquo;</p>
+                          <p className="mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Pain Points</p>
+                          <ul className="space-y-2">
+                            {p.painPoints.map((pp, pi) => (
+                              <li key={pi} className="flex items-start gap-2.5 text-[15px]">
+                                <span className="text-red-400 mt-1 text-xs">●</span>
+                                <span className="text-muted">{pp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {p.struggles && p.struggles.length > 0 && (
+                            <>
+                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Struggled With</p>
+                              <ul className="space-y-2">
+                                {p.struggles.map((s, si) => (
+                                  <li key={si} className="flex items-start gap-2.5 text-[15px]">
+                                    <span className="text-amber-400 mt-1 text-xs">▲</span>
+                                    <span className="text-muted">{s}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                          {p.fixes && p.fixes.length > 0 && (
+                            <>
+                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Recommended Fixes</p>
+                              <ul className="space-y-2">
+                                {p.fixes.map((f, fi) => (
+                                  <li key={fi} className="flex items-start gap-2.5 text-[15px]">
+                                    <span className="text-emerald-400 mt-1 text-xs">✓</span>
+                                    <span className="text-muted">{f}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </Section>
         )}
 
         {/* ── QUICK WINS ── */}
@@ -485,88 +638,6 @@ export function AuditView({ id }: { id: string }) {
           </Section>
         )}
 
-        {/* ── PERSONAS ── */}
-        {audit.personas && (
-          <Section title="Persona Verdicts" count={4} defaultOpen={true}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {audit.personas.map((p, i) => (
-                <div key={p.name} className="rounded-xl glass-card overflow-hidden">
-                  <button onClick={() => setExpandedPersona(expandedPersona === i ? null : i)}
-                    className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
-                    <span className="text-4xl">{{ "Grandma": "👵", "Teen": "🧑‍💻", "Business User": "👔", "Screen Reader": "♿" }[p.name] || p.emoji || "👤"}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-[15px] font-bold">{p.name}</h3>
-                        {p.age !== "--" && <span className="text-xs text-muted">Age {p.age}</span>}
-                      </div>
-                      <p className="mt-0.5 text-xs text-muted">Tech: {p.techLevel}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${p.wouldReturn ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                      {p.wouldReturn ? "Would return" : "Would leave"}
-                    </span>
-                    <Chevron open={expandedPersona === i} />
-                  </button>
-                  <AnimatePresence>
-                    {expandedPersona === i && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                        <div className="border-t border-glass-border px-5 pb-5 pt-4">
-                          {p.score != null && (
-                            <div className="mb-4 flex items-center gap-3">
-                              <span className="text-xs font-bold text-muted uppercase tracking-[0.15em]">Score</span>
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 w-24 rounded-full bg-glass-border overflow-hidden">
-                                  <div className={`h-full rounded-full ${p.score >= 7 ? "bg-emerald-500" : p.score >= 4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${p.score * 10}%` }} />
-                                </div>
-                                <span className={`text-sm font-bold ${p.score >= 7 ? "text-emerald-400" : p.score >= 4 ? "text-amber-400" : "text-red-400"}`}>{p.score}/10</span>
-                              </div>
-                            </div>
-                          )}
-                          <p className="mb-4 text-[15px] italic text-muted leading-relaxed">&ldquo;{p.verdict}&rdquo;</p>
-                          <p className="mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Pain Points</p>
-                          <ul className="space-y-2">
-                            {p.painPoints.map((pp, pi) => (
-                              <li key={pi} className="flex items-start gap-2.5 text-[15px]">
-                                <span className="text-red-400 mt-1 text-xs">●</span>
-                                <span className="text-muted">{pp}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          {p.struggles && p.struggles.length > 0 && (
-                            <>
-                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Struggled With</p>
-                              <ul className="space-y-2">
-                                {p.struggles.map((s, si) => (
-                                  <li key={si} className="flex items-start gap-2.5 text-[15px]">
-                                    <span className="text-amber-400 mt-1 text-xs">▲</span>
-                                    <span className="text-muted">{s}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          )}
-                          {p.fixes && p.fixes.length > 0 && (
-                            <>
-                              <p className="mt-4 mb-2 text-xs font-bold text-muted uppercase tracking-[0.15em]">Recommended Fixes</p>
-                              <ul className="space-y-2">
-                                {p.fixes.map((f, fi) => (
-                                  <li key={fi} className="flex items-start gap-2.5 text-[15px]">
-                                    <span className="text-emerald-400 mt-1 text-xs">✓</span>
-                                    <span className="text-muted">{f}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
         {/* ── ISSUES ── */}
         {audit.issues && audit.issues.length > 0 && (
           <Section title="Issues Found" count={audit.issues.length} defaultOpen={true}>
@@ -586,8 +657,8 @@ export function AuditView({ id }: { id: string }) {
                 <div key={i} className="rounded-xl glass-card overflow-hidden">
                   <button onClick={() => setExpandedIssue(expandedIssue === i ? null : i)}
                     className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]">
-                    <span className={`mt-0.5 shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold ${sevColors[issue.severity]}`}>
-                      {issue.severity}
+                    <span className={`mt-0.5 shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold ${sevColors[normSev(issue.severity)]}`}>
+                      {normSev(issue.severity)}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] font-semibold">{issue.issue}</p>
